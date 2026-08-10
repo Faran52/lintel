@@ -329,6 +329,12 @@ than that somebody intended to put them there, which is what makes it usable as 
 refuses a second push to the same branch. The failure it prevents is real: without it, re-pushing a
 released branch runs forty minutes of gates and dies in the publish step on a version conflict.
 
+**The branch deletes itself once the tag holds the commit.** A release branch is a trigger, not a
+line of development, and keeping one per version leaves a list nobody reads. The delete names
+`refs/heads/` in full because the tag now shares the branch's name, and `git push origin --delete
+v1.2.0` with both present answers `dst refspec matches more than one` and removes neither, failing
+the run after all three packages are already published.
+
 **`release` waits for `ci` and `e2e` rather than reading their conclusions.** They start from the
 same push, so they are still running when it begins, and an in-progress run has no conclusion to
 fail on. Reading without waiting passes vacuously while both are still going, which is the one thing

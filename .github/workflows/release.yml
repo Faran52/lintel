@@ -142,3 +142,13 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
+
+      # The branch has done its job: the tag holds the commit and the release is out, so leaving it
+      # behind only accumulates a branch per version that nobody will read.
+      #
+      # `refs/heads/` spelled out, not the bare name. The tag written above shares that name, and
+      # `git push origin --delete v1.2.0` with both present answers `dst refspec matches more than
+      # one` and deletes neither, which would fail the run after all three packages were already on
+      # npm. The explicit form deletes the branch and leaves the tag, which is the whole point.
+      - name: Delete the release branch
+        run: git push origin --delete "refs/heads/$GITHUB_REF_NAME"
