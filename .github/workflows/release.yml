@@ -1,0 +1,98 @@
+name: release
+
+# Publishing needs no NPM_TOKEN. It needs a trusted publisher registered on npmjs.com for each
+# package, pointing at this repository and this workflow file. npm cannot register one for a
+# package that does not exist yet, so all three go out by hand the first time; after that, each
+# gets a trusted publisher on npmjs.com pointing at this repository and this workflow file.
+#
+# Ported from `Faran52/eslint-plugin-tidy` and widened from one package to three.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: publish to npm
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      # softprops/action-gh-release creates the GitHub release.
+      contents: write
+      # The CI-green gate below reads check runs, which is its own scope.
+      checks: read
+      # Required for both provenance attestations and OIDC trusted publishing.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Refuse to publish a commit CI has not passed
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { data } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+            });
+            const ci = data.check_runs.filter((run) => run.name !== context.job);
+            const failed = ci.filter((run) => run.conclusion && run.conclusion !== 'success');
+            if (ci.length === 0) {
+              throw new Error(`No CI runs found for ${context.sha}. Push the commit and let ci finish first.`);
+            }
+            if (failed.length > 0) {
+              throw new Error(`CI is not green for ${context.sha}: ${failed.map((r) => r.name).join(', ')}`);
+            }
+
+      - run: pnpm check
+
+      - run: pnpm --filter @linteljs/eslint-plugin audit:ignores
+
+      # Every major in `peerDependencies`, not the pinned devDependency alone. The support table in
+      # the plugin's README is a claim until this runs.
+      - run: pnpm --filter @linteljs/eslint-plugin compat
+
+      - run: pnpm --filter @linteljs/eslint-plugin smoke
+      - run: pnpm --filter @linteljs/eslint-config smoke
+      - run: pnpm --filter @linteljs/create smoke
+
+      # One tag, three packages, one version. A mismatch means the wrong artifact ships, and with
+      # three of them it also means they disagree with each other.
+      - name: Verify the tag matches every package version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          for pkg in create eslint-config eslint-plugin; do
+            PKG="$(node -p "require('./packages/$pkg/package.json').version")"
+            if [ "$TAG" != "$PKG" ]; then
+              echo "Tag v$TAG does not match packages/$pkg at $PKG" >&2
+              exit 1
+            fi
+          done
+
+      # No NODE_AUTH_TOKEN. Authentication is npm trusted publishing: pnpm exchanges the workflow's
+      # OIDC token for a short-lived registry token, so there is no long-lived secret to steal.
+      #
+      # The plugin first, then the config that depends on it, then the CLI that writes both names
+      # into a generated project. A consumer installing mid-publish gets a resolvable tree at every
+      # point in that order.
+      - run: pnpm --filter @linteljs/eslint-plugin publish --no-git-checks --provenance --access public
+      - run: pnpm --filter @linteljs/eslint-config publish --no-git-checks --provenance --access public
+      - run: pnpm --filter @linteljs/create publish --no-git-checks --provenance --access public
+
+      - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          generate_release_notes: true

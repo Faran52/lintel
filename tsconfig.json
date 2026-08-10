@@ -1,0 +1,63 @@
+{
+  "compilerOptions": {
+    "rootDir": ".",
+
+    /* Language and Environment */
+    "target": "esnext",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "useDefineForClassFields": true,
+
+    /* Modules */
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": false,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "importHelpers": true,
+    "verbatimModuleSyntax": true,
+
+    /* Emit */
+    "noEmit": true,
+    "incremental": true,
+
+    /* Type Checking */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "erasableSyntaxOnly": true,
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+
+    /* Interop Constraints */
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "types": [
+      "node",
+      "vitest/globals"
+    ]
+  },
+
+  "include": [
+    "**/*.ts",
+    "**/*.mts"
+  ],
+
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "coverage"
+  ]
+}

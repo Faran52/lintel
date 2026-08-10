@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+
+    /**
+     * The rule sources import each other with an explicit `.ts` specifier. tsdown resolves
+     * those at bundle time and nothing here is emitted, so the extension costs nothing, but
+     * the workspace base turns the flag off, and this package needs it back on.
+     */
+    "allowImportingTsExtensions": true,
+
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.tsbuildinfo",
+
+    "paths": {
+      "@mocks/*": ["./__mocks__/*"]
+    }
+  },
+
+  "include": [
+    "src/**/*.ts",
+    "__mocks__/**/*.ts",
+    "tsdown.config.ts",
+    "vitest.config.ts"
+  ]
+}

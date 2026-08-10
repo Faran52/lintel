@@ -1,0 +1,242 @@
+import { spawnSync } from 'node:child_process';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { env } from 'node:process';
+
+import {
+  afterAll,
+  describe,
+  expect,
+  it,
+} from 'vitest';
+
+import { parsePackageJson } from '../../artifacts/package-json/emitPackageJson';
+import {
+  type Answers,
+  DEFAULT_ANSWERS,
+  LIBRARIES,
+  TARGET_IDS,
+} from '../../model/answers/answers';
+import {
+  CONFIG_PATH,
+  emitLintelConfig,
+  parseLintelConfig,
+} from '../../model/config/lintelConfig';
+import { targetFor } from '../../model/targets';
+
+import { scaffoldCommand } from './pipeline';
+
+interface RunResult {
+  status: number;
+  output: string;
+}
+
+// Installed from packed tarballs, not the workspace: a workspace install dedupes plugin instances, hiding the `Cannot
+// redefine plugin` collision a real consumer would hit.
+const TARBALL_DIR = env['LINTEL_TARBALLS'] ?? resolve(import.meta.dirname, '../../../../../.e2e');
+
+// Exactly one tarball per package, or none: `test:e2e` repacks before every run, so two versions means the directory
+// was filled in by hand and picking the first would test the wrong one silently.
+const tarballFor = (prefix: string): string | undefined => {
+  if (!existsSync(TARBALL_DIR)) {
+    return undefined;
+  }
+
+  const matches = readdirSync(TARBALL_DIR).filter((file) => {
+    return file.startsWith(`${prefix}-`) && file.endsWith('.tgz');
+  });
+
+  if (matches.length > 1) {
+    throw new Error(
+      `${TARBALL_DIR} holds ${String(matches.length)} tarballs for ${prefix}: ${matches.join(', ')}. `
+      + 'Run `pnpm -w run e2e:pack` to repack from a clean directory.',
+    );
+  }
+
+  const [match] = matches;
+
+  return match === undefined ? undefined : join(TARBALL_DIR, match);
+};
+
+// pnpm pack flattens the scope into the filename, so `@linteljs/eslint-config` packs as
+// `linteljs-eslint-config-<version>`.
+const configTarball = tarballFor('linteljs-eslint-config');
+const pluginTarball = tarballFor('linteljs-eslint-plugin');
+const cliTarball = tarballFor('linteljs-create');
+
+const ready = configTarball !== undefined && pluginTarball !== undefined && cliTarball !== undefined;
+
+const run = (command: string, args: string[], cwd: string, input = ''): RunResult => {
+  const result = spawnSync(command, args, {
+    cwd,
+    input,
+    encoding: 'utf8',
+    // Generated projects install from the public registry; a host config pinning a private one should not be inherited
+    // silently.
+    env: { ...env, npm_config_registry: 'https://registry.npmjs.org/' },
+  });
+
+  return { status: result.status ?? 1, output: `${result.stdout}${result.stderr}` };
+};
+
+// Folds the exit status into the asserted value so a failure prints the process output in the diff, rather than a bare
+// `1 !== 0`.
+const outcome = (result: RunResult, label: string): string => {
+  return result.status === 0 ? `${label}: ok` : `${label}: exit ${String(result.status)}\n${result.output}`;
+};
+
+const workspace = mkdtempSync(join(tmpdir(), 'lintel-e2e-'));
+
+// The CLI runs from the packed tarball, so `bin/`, `dist/` and `assets/` are all exercised.
+const cliRoot = join(workspace, 'cli');
+
+if (ready) {
+  mkdirSync(cliRoot, { recursive: true });
+  run('tar', ['-xzf', cliTarball, '-C', cliRoot], workspace);
+  /**
+   * A tarball is not an installation: `npx` fetches the runtime dependencies too, and without them the packed binary
+   * dies on ERR_MODULE_NOT_FOUND before writing a file. Production only, since nothing here runs the package's tests,
+   * and `--prefer-offline` so the cache serves it rather than the registry on every run.
+   */
+  run(
+    'npm',
+    ['install', '--omit=dev', '--prefer-offline', '--no-audit', '--no-fund'],
+    join(cliRoot, 'package'),
+  );
+}
+
+afterAll(() => {
+  rmSync(workspace, { recursive: true, force: true });
+});
+
+// One case per target on the defaults, plus one per answer dimension the defaults never reach (libraries, no testing,
+// the relaxed floor); one per dimension rather than every combination, since each case is a real install.
+const CASES: { label: string; answers: Answers }[] = [
+  ...TARGET_IDS.map((target) => {
+    return { label: target, answers: { ...DEFAULT_ANSWERS, target } };
+  }),
+  {
+    label: 'next with every library',
+    answers: { ...DEFAULT_ANSWERS, target: 'next', libraries: LIBRARIES },
+  },
+  {
+    // `store: true` rides along so the one store path with a runtime install is proven end to end.
+    label: 'react with every library',
+    answers: {
+      ...DEFAULT_ANSWERS,
+      target: 'react',
+      libraries: LIBRARIES,
+      store: true,
+    },
+  },
+  {
+    label: 'webextension with no tests',
+    answers: { ...DEFAULT_ANSWERS, target: 'webextension', testing: 'none' },
+  },
+  {
+    label: 'react on the relaxed floor',
+    answers: { ...DEFAULT_ANSWERS, target: 'react', typeSafety: 'relaxed' },
+  },
+];
+
+describe.skipIf(!ready)('end-to-end generation', () => {
+  it.each(CASES)('generates, installs and checks $label', ({ label, answers }) => {
+    const root = join(workspace, label.replaceAll(' ', '-'));
+    // The target id doubles as the project name, except `react-native`: `create-expo-app` rejects a name matching one
+    // of its own dependencies, so this is a legal name choice, not a workaround.
+    const name = answers.target === 'react-native' ? 'rn-app' : answers.target;
+    const project = join(root, name);
+
+    mkdirSync(root, { recursive: true });
+
+    // The product's own invocation, not a copy: this line and stage 1 build the same argv from the same
+    // `scaffoldCommand` function.
+    const [command, ...argv] = scaffoldCommand(
+      answers.packageManager,
+      targetFor(answers.target).scaffold(name, answers),
+    );
+
+    const scaffold = run(command, argv, root);
+
+    expect(existsSync(join(project, 'package.json')) ? 'scaffolded' : scaffold.output).toBe('scaffolded');
+
+    // `create-linteljs` asks nothing over a real terminal here, and cannot be piped one: a non-interactive run either
+    // takes `--yes` or, like this, already has a `lintel.config.json` to plan from, the same route `--skip-scaffold`
+    // takes on a second run of any project. Writing the file directly is the honest equivalent of a person having
+    // already answered the questionnaire once, without scripting keypresses over a pty this suite does not have.
+    writeFileSync(join(project, CONFIG_PATH), emitLintelConfig(answers), 'utf8');
+
+    // `--fresh`: this directory is new scaffolder output the CLI didn't create, and without it starter fixes stay off.
+    // `--no-install` so the tarball overrides land before install; the second invocation exercises install and fix.
+    const generate = run(
+      'node',
+      [join(cliRoot, 'package/bin/create-linteljs.mjs'), '--skip-scaffold', '--fresh', '--no-install'],
+      project,
+    );
+
+    expect(outcome(generate, '@linteljs/create')).toBe('@linteljs/create: ok');
+    expect(existsSync(join(project, 'eslint.config.js'))).toBe(true);
+    expect(existsSync(join(project, CONFIG_PATH))).toBe(true);
+    expect(parseLintelConfig(readFileSync(join(project, CONFIG_PATH), 'utf8')))
+      .toMatchObject(answers);
+    expect(parsePackageJson(readFileSync(join(project, 'package.json'), 'utf8')))
+      .not.toHaveProperty('lintel');
+
+    // pnpm 11 no longer reads the `pnpm` field in `package.json`, so overrides live here; the release-age reset is for
+    // hosts with `minimumReleaseAge` set, unrelated to lintel.
+    appendFileSync(
+      join(project, 'pnpm-workspace.yaml'),
+      [
+        'overrides:',
+        `  '@linteljs/eslint-config': file:${String(configTarball)}`,
+        `  '@linteljs/eslint-plugin': file:${String(pluginTarball)}`,
+        'minimumReleaseAge: 0',
+        '',
+      ].join('\n'),
+    );
+
+    // Stages 2-6, including install and the eslint --fix pass; `pnpm-workspace.yaml` is written once and never
+    // overwritten, so the overrides appended above survive.
+    const complete = run(
+      'node',
+      [join(cliRoot, 'package/bin/create-linteljs.mjs'), '--skip-scaffold'],
+      project,
+    );
+
+    expect(outcome(complete, '@linteljs/create install+fix')).toBe('@linteljs/create install+fix: ok');
+    expect(complete.output).not.toContain('next: ');
+
+    // Proves the override took rather than assuming it; a silently-ignored override would leave every assertion below
+    // measuring a published package instead of this workspace.
+    const why = run('pnpm', ['why', '@linteljs/eslint-plugin'], project);
+
+    expect(why.output).toContain('@linteljs/eslint-plugin');
+    expect(why.output).toContain('@linteljs/eslint-config');
+
+    // ESLint exits 2 on a configuration failure (bad plugin, missing peer, broken parser) and 1 when it ran and found
+    // problems; the two look alike in a diff but mean opposite things, so both are asserted separately.
+    const lint = run('pnpm', ['lint'], project);
+
+    expect(lint.status < 2 ? 'eslint ran' : `eslint config error\n${lint.output}`).toBe('eslint ran');
+
+    // Zero, with no per-target allowance: an exception here is a finding the pipeline failed to repair, and its honest
+    // home is a README line, not a constant that hides it.
+    const found = Number(/✖ (\d+) problem/.exec(lint.output)?.[1] ?? '0');
+
+    expect(`${String(found)} findings\n${found === 0 ? '' : lint.output}`).toBe('0 findings\n');
+
+    // Runs `check` rather than its five commands separately, so the gate has one definition instead of a second one
+    // drifting inside the test.
+    expect(outcome(run('pnpm', ['check'], project), 'check')).toBe('check: ok');
+  }, 900_000);
+});

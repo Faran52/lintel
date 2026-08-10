@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    /**
+     * Off for the same reason `packages/eslint-config` turns it off: `eslint.config.ts` composes
+     * layers out of that package's source, and ESLint types a config field as `X | undefined`
+     * rather than `X?`, so spreading a preset is rejected on every property it left out.
+     */
+    "exactOptionalPropertyTypes": false
+  },
+
+  /**
+   * The workspace's own root-level TypeScript. `pnpm -r typecheck` runs each package and skips the
+   * root, so until this existed `eslint.config.ts` and both scripts were never checked by
+   * anything, and a real error sat in the naming map for as long as it took to look.
+   */
+  "include": [
+    "eslint.config.ts",
+    "vitest.config.ts",
+    "scripts/*.ts"
+  ]
+}

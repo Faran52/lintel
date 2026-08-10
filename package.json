@@ -1,0 +1,39 @@
+{
+  "name": "linteljs-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=24.19.0",
+    "pnpm": ">=11.20.0"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:css": "stylelint \"packages/*/src/**/*.css\" --allow-empty-input",
+    "typecheck": "tsc --noEmit -p tsconfig.root.json && pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "build": "pnpm -r build",
+    "check": "pnpm lint && pnpm lint:css && pnpm typecheck && pnpm test:coverage && pnpm build",
+    "e2e:pack": "node -e \"require('node:fs').rmSync('.e2e',{recursive:true,force:true})\" && pnpm -r pack --pack-destination .e2e",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
+    "@types/node": "^26.1.2",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^10.8.1",
+    "husky": "^9.1.7",
+    "jiti": "^2.7.0",
+    "lint-staged": "^17.3.0",
+    "stylelint": "^17.14.1",
+    "stylelint-config-recess-order": "^7.7.0",
+    "stylelint-config-standard": "^40.0.0",
+    "tsdown": "^0.22.14",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.10"
+  }
+}

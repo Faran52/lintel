@@ -1,0 +1,277 @@
+{
+  "destructuring-property-newline": {
+    "messages": {
+      "propertiesOnNewline": "Destructuring properties must go on a new line if they aren't all on the same line."
+    },
+    "schema": [],
+    "type": "layout",
+    "fixable": "whitespace",
+    "docs": {
+      "category": "layout",
+      "language": "universal",
+      "recommended": true,
+      "description": "Enforce consistent newlines in destructuring patterns. Allows all properties on same line."
+    }
+  },
+  "export-specifier-newline": {
+    "messages": {
+      "specifiersOnNewline": "Export specifiers must go on a new line."
+    },
+    "schema": [],
+    "type": "layout",
+    "fixable": "whitespace",
+    "docs": {
+      "category": "layout",
+      "language": "universal",
+      "recommended": true,
+      "description": "Forces every export specifier to be on a new line."
+    }
+  },
+  "import-newlines": {
+    "messages": {
+      "mustSplitMany": "Imports must be broken into multiple lines if there are more than {{maxItems}} elements.",
+      "mustSplitLong": "Imports must be broken into multiple lines if the line length exceeds {{maxLineLength}} characters.",
+      "mustNotSplit": "Imports must not be broken into multiple lines if there are {{maxItems}} or less elements.",
+      "limitLineCount": "Import lines must have one element per line.",
+      "noBlankBetween": "Import lines cannot have blank lines between them."
+    },
+    "schema": [
+      {
+        "type": "object",
+        "properties": {
+          "maxItems": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 2
+          },
+          "maxLineLength": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 120
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "type": "layout",
+    "fixable": "code",
+    "docs": {
+      "category": "layout",
+      "language": "universal",
+      "recommended": true,
+      "description": "Enforce multiple lines for import statements past a certain number of items."
+    }
+  },
+  "interface-order": {
+    "messages": {
+      "moveAfterImports": "Top-level type/interface declarations must be placed after imports, before runtime code."
+    },
+    "schema": [],
+    "type": "layout",
+    "fixable": "code",
+    "docs": {
+      "category": "ordering",
+      "language": "typescript",
+      "recommended": false,
+      "description": "Enforce that top-level interfaces and type aliases are placed after imports, before runtime code."
+    }
+  },
+  "newline-destructuring": {
+    "messages": {
+      "mustSplit": "Properties must be broken into multiple lines if there are more than {{maxProperties}}.",
+      "noBlankBetween": "Properties cannot have blank lines between them.",
+      "consistNewline": "Properties must be put on newlines.",
+      "multilineProperty": "Multiline property must be put on newlines."
+    },
+    "schema": [
+      {
+        "type": "object",
+        "properties": {
+          "maxProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 2
+          },
+          "maxPropertiesWithRest": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "type": "layout",
+    "fixable": "code",
+    "docs": {
+      "category": "layout",
+      "language": "universal",
+      "recommended": true,
+      "description": "Enforce newlines in object destructuring, interfaces, and type literals when there are too many properties."
+    }
+  },
+  "no-import-namespace-destructure": {
+    "messages": {
+      "noDestructureNamespace": "Do not destructure namespace imports; import only specific members needed."
+    },
+    "schema": [],
+    "type": "suggestion",
+    "fixable": null,
+    "docs": {
+      "category": "imports",
+      "language": "universal",
+      "recommended": true,
+      "description": "Disallow destructuring namespace imports. Import only the specific named exports needed."
+    }
+  },
+  "prefer-arrow-functions": {
+    "messages": {
+      "preferArrow": "Prefer using arrow functions over plain functions",
+      "preferExplicit": "Prefer using explicit returns when the arrow function contains only a return",
+      "preferArrowHoisted": "Prefer arrow functions, but this one is used before it is declared. Converting it to `const` would throw at runtime, so move the usage below the declaration first, then this fixes itself."
+    },
+    "schema": [
+      {
+        "type": "object",
+        "properties": {
+          "forceHoisted": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "type": "suggestion",
+    "fixable": "code",
+    "docs": {
+      "category": "functions",
+      "language": "universal",
+      "recommended": true,
+      "description": "Prefer arrow functions over plain functions when conversion preserves behaviour."
+    }
+  },
+  "prefer-await-to-then": {
+    "messages": {
+      "preferAwait": "Prefer await to then()/catch()/finally()."
+    },
+    "schema": [
+      {
+        "type": "object",
+        "properties": {
+          "strict": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "type": "suggestion",
+    "fixable": null,
+    "docs": {
+      "category": "promises",
+      "language": "universal",
+      "recommended": true,
+      "description": "Prefer await to then()/catch()/finally() for reading Promise values."
+    }
+  },
+  "prefer-destructured-props": {
+    "messages": {
+      "destructure": "Destructure the props in the signature instead of reading them member by member."
+    },
+    "schema": [],
+    "type": "suggestion",
+    "fixable": null,
+    "docs": {
+      "category": "functions",
+      "language": "universal",
+      "recommended": false,
+      "description": "Requires props to be destructured in the signature rather than read member by member."
+    }
+  },
+  "prefer-try-catch": {
+    "messages": {
+      "preferTryCatchOverCatch": "Wrap the await in `try`/`catch` instead of handling the rejection with `.catch()`.",
+      "preferTryCatchOverThenHandler": "Wrap the await in `try`/`catch` instead of passing a rejection handler to `then`."
+    },
+    "schema": [],
+    "type": "suggestion",
+    "fixable": null,
+    "docs": {
+      "category": "promises",
+      "language": "universal",
+      "recommended": true,
+      "description": "Prefer try/catch around an await to a promise rejection handler."
+    }
+  },
+  "sort-hook-dependencies": {
+    "messages": {
+      "sort": "Dependencies should be sorted alphabetically."
+    },
+    "schema": [
+      {
+        "type": "object",
+        "properties": {
+          "order": {
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "default": "asc"
+          },
+          "hooks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "uniqueItems": true,
+            "default": [
+              "useEffect",
+              "useCallback",
+              "useMemo"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "type": "suggestion",
+    "fixable": "code",
+    "docs": {
+      "category": "ordering",
+      "language": "universal",
+      "recommended": false,
+      "description": "Requires that hook dependency arrays are sorted alphabetically."
+    }
+  },
+  "union-newline": {
+    "messages": {
+      "complexUnionNewline": "Union containing object or function types must have each member on a new line.",
+      "genericUnionNewline": "Union in generic type argument must split when more than {{maxGenericMembers}} members."
+    },
+    "schema": [
+      {
+        "type": "object",
+        "properties": {
+          "maxGenericMembers": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 3
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "type": "layout",
+    "fixable": "whitespace",
+    "docs": {
+      "category": "layout",
+      "language": "typescript",
+      "recommended": true,
+      "description": "Enforce newlines in union types containing objects/functions, or in generic type arguments with many keys."
+    }
+  }
+}

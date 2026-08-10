@@ -1,0 +1,63 @@
+import { hasTests } from '../../model/answers/answers';
+import { targetFor } from '../../model/targets';
+
+import type { Answers, PackageManager } from '../../model/answers/answers';
+
+// `pnpm test` works; `npm test` works but `npm lint` does not. Only npm and bun need `run`.
+export const RUN_PREFIX: Record<PackageManager, string> = {
+  pnpm: 'pnpm',
+  npm: 'npm run',
+  yarn: 'yarn',
+  bun: 'bun run',
+};
+
+// Exported so `lint:css` and the stage-6 fix pass can't disagree about what the gate covers.
+// SFC extensions are included because `src/**/*.css` matches none of a Vue or Svelte project's styles.
+export const styleGlob = (answers: Answers): string => {
+  const { sfcExtension } = targetFor(answers.target);
+
+  return sfcExtension === undefined ? 'src/**/*.css' : `src/**/*.{css,${sfcExtension}}`;
+};
+
+// check is named in the return type so callers need no unreachable, type-demanded `?? ''` fallback.
+export const buildScripts = (answers: Answers): Record<string, string> & { check: string } => {
+  const run = RUN_PREFIX[answers.packageManager];
+  const target = targetFor(answers.target);
+  const gates = ['lint', 'lint:css', 'typecheck'];
+
+  const scripts: Record<string, string> = {
+    'lint': 'eslint .',
+    'lint:fix': 'eslint . --fix',
+    // A real gate, not a dead script: without it, 87 stylelint findings in starter CSS passed check unnoticed.
+    // `--allow-empty-input` because stylelint exits 2 on a glob that matches nothing.
+    'lint:css': `stylelint "${styleGlob(answers)}" --allow-empty-input`,
+    'typecheck': target.typecheck,
+  };
+
+  if (hasTests(answers)) {
+    // vitest exits 1 on an empty run (hence --passWithNoTests); test:coverage stays strict, since check uses it.
+    scripts['test'] = 'vitest run --passWithNoTests';
+    scripts['test:coverage'] = 'vitest run --coverage';
+    gates.push('test:coverage');
+  }
+
+  // build comes from the scaffolder for seven of eight targets; the gate stays unconditional, since a target with none
+  // is a gap, not a shape to accommodate.
+  if (target.build !== undefined) {
+    scripts['build'] = target.build;
+  }
+
+  gates.push('build');
+
+  return {
+    ...scripts,
+    check: gates
+      .map((gate) => {
+        return `${run} ${gate}`;
+      })
+      .join(' && '),
+    // husky installs the hooks on `install`; without this the .husky/ files sit there inert. A target's own `prepare`
+    // runs first, not replaced: SvelteKit's writes .svelte-kit/tsconfig.json, which the emitted tsconfig extends.
+    prepare: target.prepare === undefined ? 'husky' : `${target.prepare} && husky`,
+  };
+};

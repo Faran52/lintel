@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Faran52/linteljs/main/schemas/lintel.config.v1.schema.json",
+  "title": "LintelJS configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "target",
+    "testing",
+    "packageManager",
+    "libraries",
+    "store",
+    "typeSafety",
+    "agents",
+    "plugins"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://raw.githubusercontent.com/Faran52/linteljs/main/schemas/lintel.config.v1.schema.json"
+    },
+    "schemaVersion": { "const": 1 },
+    "target": {
+      "enum": ["react", "next", "vue", "svelte", "solid", "angular", "webextension", "react-native"]
+    },
+    "testing": { "enum": ["vitest", "none"] },
+    "packageManager": { "enum": ["pnpm", "npm", "yarn", "bun"] },
+    "libraries": {
+      "type": "array",
+      "items": { "enum": ["zod", "tanstack-query", "tailwind"] },
+      "uniqueItems": true
+    },
+    "store": { "type": "boolean" },
+    "typeSafety": { "enum": ["strict", "relaxed"] },
+    "agents": {
+      "type": "array",
+      "items": { "enum": ["claude-code", "codex"] },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "plugins": {
+      "type": "array",
+      "items": { "enum": ["ponytail", "context7", "frontend-design"] },
+      "uniqueItems": true
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+
+    "paths": {
+      "@mocks/*": ["./__mocks__/*"]
+    },
+
+    /**
+     * Off here, and only here.
+     *
+     * Every value this package handles is a config object written by somebody else. ESLint
+     * types those fields as `X | undefined` rather than `X?`, so spreading a preset and adding
+     * a `files` glob (which is most of what a layer does) is rejected on every property that
+     * preset happened to leave out. The design doc names this flag as the one that bites in
+     * practice against third-party types; this is the seam it bites at.
+     *
+     * It stays on for the workspace and for every project `@linteljs/create` generates.
+     */
+    "exactOptionalPropertyTypes": false
+  },
+
+  "include": [
+    "src/**/*.ts",
+    "__mocks__/**/*.ts",
+    "typings/**/*.d.ts",
+    "tsdown.config.ts",
+    "vitest.config.ts"
+  ]
+}

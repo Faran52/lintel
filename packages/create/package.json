@@ -1,0 +1,69 @@
+{
+  "name": "@linteljs/create",
+  "version": "1.1.0",
+  "description": "Scaffold a project with the lintel standard: ESLint layers, tsconfig, git hooks and agent rules.",
+  "license": "MIT",
+  "author": "Faran Ali",
+  "homepage": "https://github.com/Faran52/linteljs#readme",
+  "bugs": {
+    "url": "https://github.com/Faran52/linteljs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Faran52/linteljs.git",
+    "directory": "packages/create"
+  },
+  "keywords": [
+    "create",
+    "scaffold",
+    "starter",
+    "boilerplate",
+    "eslint",
+    "angular",
+    "next",
+    "react",
+    "solid",
+    "svelte",
+    "typescript",
+    "vue"
+  ],
+  "type": "module",
+  "bin": {
+    "create-linteljs": "./bin/create-linteljs.mjs"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "assets",
+    "!assets/scripts/*.test.ts",
+    "CHANGELOG.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=24.19.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "pnpm run build",
+    "smoke": "node scripts/smoke.js",
+    "test:e2e": "pnpm -w run e2e:pack && vitest run --config vitest.e2e.config.ts",
+    "typecheck": "tsc --noEmit",
+    "prepare": "pnpm run build"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.7.0"
+  }
+}

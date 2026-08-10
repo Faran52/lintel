@@ -1,0 +1,129 @@
+name: ci
+
+# Ported from `Faran52/eslint-plugin-tidy`, which had this before the three packages moved into
+# one workspace and it was left behind. The jobs below are that file adapted to a pnpm workspace:
+# the root owns `lint`, `typecheck` and `test:coverage` now, and `compat` is one script rather
+# than a job per major.
+
+on:
+  push:
+    branches: [main, 'v*']
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: the gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Third-party actions are pinned to a commit, not a tag: a tag can be moved onto different
+      # code without the reference here changing.
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The same chain a generated project runs, and the same one CLAUDE.md tells a contributor to
+      # run: lint, lint:css, typecheck, test:coverage at 100%, build.
+      - run: pnpm check
+
+      # `oldest-runtime` cannot build for itself: pnpm and the bundler both need a modern Node.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: plugin-dist
+          path: packages/eslint-plugin/dist
+          retention-days: 1
+
+  smoke:
+    name: packed artifacts load
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Unit tests cannot catch a broken `exports` map or a missing entry in `files`. All three
+      # get packed and loaded the way a consumer reaches them.
+      - run: pnpm --filter @linteljs/eslint-plugin smoke
+      - run: pnpm --filter @linteljs/eslint-config smoke
+      - run: pnpm --filter @linteljs/create smoke
+
+  compat:
+    name: rules run on eslint 5 to 10
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # `peerDependencies.eslint` is `>=5.0.0`. This is what makes that a test result rather than
+      # a claim: six majors, both config formats, and byte-identical fixed output across all of
+      # them. It has already caught rules reading an accessor that moved, which the whole unit
+      # suite passed straight through.
+      - run: pnpm --filter @linteljs/eslint-plugin compat
+
+  oldest-runtime:
+    name: artifact runs on node ${{ matrix.node }} (eslint ${{ matrix.eslint }})
+    runs-on: ubuntu-latest
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor `engines.node` declares, paired with the ESLint majors that era of Node
+        # shipped alongside. setup-node cannot install Node 12 any more, so this runs in a
+        # container.
+        include:
+          - node: 12
+            eslint: '5'
+          - node: 12
+            eslint: '6'
+          - node: 14
+            eslint: '7'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: plugin-dist
+          path: packages/eslint-plugin/dist
+
+      # Docker is driven from the host rather than through `container:`, because that would run
+      # actions/* on Node 24 inside the image, and node:12-alpine's musl is too old for it.
+      #
+      # This is the only thing that can answer whether the shipped bundle runs on the declared
+      # Node floor. A bundler lowers syntax and leaves built-in methods exactly where they were,
+      # so `smoke.js`'s scan for post-Node-12 APIs is a cheaper check of the same property, not a
+      # substitute for running it.
+      - name: Run the rules on node ${{ matrix.node }}
+        run: |
+          docker run --rm -v "$PWD/packages/eslint-plugin:/src:ro" -w /tmp node:${{ matrix.node }}-alpine sh -c '
+            set -e
+            cp -r /src/dist /src/scripts /tmp/
+            npm install --no-audit --no-fund --no-save eslint@${{ matrix.eslint }}
+            node scripts/runRules.cjs dist/index.js
+          '

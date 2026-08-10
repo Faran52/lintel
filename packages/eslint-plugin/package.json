@@ -1,0 +1,94 @@
+{
+  "name": "@linteljs/eslint-plugin",
+  "version": "1.1.0",
+  "description": "Opinionated ESLint rules for TypeScript and React: vertical layout, import hygiene, and modern idioms.",
+  "homepage": "https://github.com/Faran52/linteljs#readme",
+  "license": "MIT",
+  "author": "Faran Ali",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Faran52/linteljs.git",
+    "directory": "packages/eslint-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/Faran52/linteljs/issues"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "CHANGELOG.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsdown && node scripts/writeDistManifest.js && node scripts/writeRuleDocs.js",
+    "typecheck": "tsc --noEmit",
+    "prepack": "pnpm run build",
+    "smoke": "node scripts/smoke.js",
+    "audit:ignores": "node scripts/auditIgnores.js",
+    "audit:real": "node scripts/fixRealCode.js",
+    "audit:options": "node scripts/fixRealCode.js --options",
+    "audit:negatives": "node scripts/findFalseNegatives.js",
+    "audit:security": "node scripts/auditSecurity.js",
+    "audit:survivors": "node scripts/auditSurvivors.js",
+    "audit:helpers": "node scripts/auditHelpers.js",
+    "mutation": "stryker run",
+    "compat": "node scripts/compatMatrix.js",
+    "prepare": "pnpm run build"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
+    "@types/node": "^26.1.2",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^10.8.0",
+    "eslint-plugin-sonarjs": "^4.2.0",
+    "tsdown": "^0.22.14",
+    "tslib": "^2.8.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.66.0",
+    "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
+    "eslint": ">=5.0.0"
+  },
+  "keywords": [
+    "codestyle",
+    "eslint",
+    "eslint-plugin",
+    "eslintplugin",
+    "flat-config",
+    "formatting",
+    "react",
+    "typescript",
+    "javascript",
+    "ecmascript",
+    "lint",
+    "linting",
+    "linter"
+  ]
+}

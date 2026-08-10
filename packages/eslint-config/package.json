@@ -1,0 +1,235 @@
+{
+  "name": "@linteljs/eslint-config",
+  "version": "1.1.0",
+  "description": "Shareable ESLint flat-config layers: one base, one per framework, composed by @linteljs/create.",
+  "homepage": "https://github.com/Faran52/linteljs#readme",
+  "license": "MIT",
+  "author": "Faran Ali",
+  "type": "module",
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Faran52/linteljs.git",
+    "directory": "packages/eslint-config"
+  },
+  "bugs": {
+    "url": "https://github.com/Faran52/linteljs/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "pnpm run build",
+    "smoke": "node scripts/smoke.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
+    },
+    "./base": {
+      "import": {
+        "types": "./dist/base.d.mts",
+        "default": "./dist/base.mjs"
+      }
+    },
+    "./define-config": {
+      "import": {
+        "types": "./dist/defineConfig.d.mts",
+        "default": "./dist/defineConfig.mjs"
+      }
+    },
+    "./typescript": {
+      "import": {
+        "types": "./dist/typescript.d.mts",
+        "default": "./dist/typescript.mjs"
+      }
+    },
+    "./vitest": {
+      "import": {
+        "types": "./dist/vitest.d.mts",
+        "default": "./dist/vitest.mjs"
+      }
+    },
+    "./html": {
+      "import": {
+        "types": "./dist/html.d.mts",
+        "default": "./dist/html.mjs"
+      }
+    },
+    "./react": {
+      "import": {
+        "types": "./dist/react.d.mts",
+        "default": "./dist/react.mjs"
+      }
+    },
+    "./next": {
+      "import": {
+        "types": "./dist/next.d.mts",
+        "default": "./dist/next.mjs"
+      }
+    },
+    "./vue": {
+      "import": {
+        "types": "./dist/vue.d.mts",
+        "default": "./dist/vue.mjs"
+      }
+    },
+    "./svelte": {
+      "import": {
+        "types": "./dist/svelte.d.mts",
+        "default": "./dist/svelte.mjs"
+      }
+    },
+    "./solid": {
+      "import": {
+        "types": "./dist/solid.d.mts",
+        "default": "./dist/solid.mjs"
+      }
+    },
+    "./angular": {
+      "import": {
+        "types": "./dist/angular.d.mts",
+        "default": "./dist/angular.mjs"
+      }
+    },
+    "./tanstack-query": {
+      "import": {
+        "types": "./dist/tanstackQuery.d.mts",
+        "default": "./dist/tanstackQuery.mjs"
+      }
+    },
+    "./tailwind": {
+      "import": {
+        "types": "./dist/tailwind.d.mts",
+        "default": "./dist/tailwind.mjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@stylistic/eslint-plugin": "5.10.0",
+    "eslint-import-resolver-typescript": "4.4.5",
+    "eslint-plugin-check-file": "3.3.2",
+    "eslint-plugin-import-x": "4.17.1",
+    "eslint-plugin-simple-import-sort": "14.0.0",
+    "eslint-plugin-sonarjs": "4.2.0",
+    "@linteljs/eslint-plugin": "workspace:*",
+    "eslint-plugin-unused-imports": "4.4.1",
+    "typescript-eslint": "8.66.0"
+  },
+  "devDependencies": {
+    "@eslint-react/eslint-plugin": "^5.18.2",
+    "@html-eslint/eslint-plugin": "^0.64.0",
+    "@html-eslint/parser": "^0.64.0",
+    "@tanstack/eslint-plugin-query": "^5.101.4",
+    "@types/node": "^26.1.2",
+    "@vitest/eslint-plugin": "^1.6.26",
+    "angular-eslint": "^22.1.0",
+    "eslint": "^10.8.0",
+    "eslint-config-next": "^16.3.0",
+    "eslint-plugin-better-tailwindcss": "^4.7.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-solid": "^0.14.5",
+    "eslint-plugin-svelte": "^3.22.0",
+    "eslint-plugin-vue": "^10.10.0",
+    "next": "^16.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "svelte": "^5.56.8",
+    "svelte-eslint-parser": "^1.8.0",
+    "tailwindcss": "^4.3.3",
+    "tsdown": "^0.22.14",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.10",
+    "vue": "^3.5.41",
+    "vue-eslint-parser": "^10.4.1"
+  },
+  "peerDependencies": {
+    "@eslint-react/eslint-plugin": ">=5",
+    "@html-eslint/eslint-plugin": ">=0.35",
+    "@html-eslint/parser": ">=0.35",
+    "@tanstack/eslint-plugin-query": ">=5",
+    "@vitest/eslint-plugin": ">=1",
+    "angular-eslint": ">=20",
+    "eslint": ">=9",
+    "eslint-config-next": ">=15",
+    "eslint-plugin-better-tailwindcss": ">=4",
+    "eslint-plugin-react-hooks": ">=7",
+    "eslint-plugin-solid": ">=0.14",
+    "eslint-plugin-svelte": ">=3",
+    "eslint-plugin-vue": ">=10",
+    "svelte-eslint-parser": ">=1",
+    "vue-eslint-parser": ">=10"
+  },
+  "peerDependenciesMeta": {
+    "@eslint-react/eslint-plugin": {
+      "optional": true
+    },
+    "@html-eslint/eslint-plugin": {
+      "optional": true
+    },
+    "@html-eslint/parser": {
+      "optional": true
+    },
+    "@tanstack/eslint-plugin-query": {
+      "optional": true
+    },
+    "@vitest/eslint-plugin": {
+      "optional": true
+    },
+    "angular-eslint": {
+      "optional": true
+    },
+    "eslint-config-next": {
+      "optional": true
+    },
+    "eslint-plugin-better-tailwindcss": {
+      "optional": true
+    },
+    "eslint-plugin-react-hooks": {
+      "optional": true
+    },
+    "eslint-plugin-solid": {
+      "optional": true
+    },
+    "eslint-plugin-svelte": {
+      "optional": true
+    },
+    "eslint-plugin-vue": {
+      "optional": true
+    },
+    "svelte-eslint-parser": {
+      "optional": true
+    },
+    "vue-eslint-parser": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "eslint",
+    "eslint-config",
+    "eslintconfig",
+    "flat-config",
+    "angular",
+    "next",
+    "react",
+    "solid",
+    "svelte",
+    "typescript",
+    "vue",
+    "tailwindcss"
+  ]
+}
