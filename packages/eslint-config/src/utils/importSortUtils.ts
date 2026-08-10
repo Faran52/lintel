@@ -40,8 +40,18 @@ const REGEX_SPECIAL = /[$^\\.*+?()[\]{}|]/g;
 
 const ESCAPED = '\\$&';
 
+/**
+ * `/` or the end of the specifier, not `/` alone. An alias can be declared bare (`'@engine':
+ * './src/engine'`, imported as `from '@engine'`), and a trailing `/` never matches that, so a
+ * project whose aliases are all barrels got no alias bucket at all: every one of its own imports
+ * fell through to `^@?\w` and sorted in with node_modules, silently and with lint green. Found by
+ * migrating a real project that declares nothing but barrels.
+ *
+ * A type import is unaffected: `simple-import-sort` appends a NUL to those, so `$` cannot match
+ * one, and `TYPE_GROUP` is where they are meant to land anyway.
+ */
 const patternFor = (alias: string): string => {
-  return `^${aliasNameOf(alias).replace(REGEX_SPECIAL, ESCAPED)}/`;
+  return `^${aliasNameOf(alias).replace(REGEX_SPECIAL, ESCAPED)}(?:/|$)`;
 };
 
 // Aliases the buckets above do not name. They sort after the known buckets rather than falling
@@ -49,9 +59,13 @@ const patternFor = (alias: string): string => {
 const unknownAliasesIn = (aliases: string[]): string[] => {
   const known = new Set(ALIAS_BUCKETS.flat());
 
-  return aliases.filter((alias) => {
+  // Deduplicated, because `'@engine'` and `'@engine/*'` are one alias declared twice and name one
+  // bucket; without this the group carries the same pattern twice.
+  const patterns = new Set(aliases.filter((alias) => {
     return !known.has(aliasNameOf(alias));
-  }).map(patternFor).sort((left, right) => {
+  }).map(patternFor));
+
+  return [...patterns].sort((left, right) => {
     return left.localeCompare(right);
   });
 };

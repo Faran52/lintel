@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.3
+
+### Fixed
+
+- An alias declared bare (`'@engine': './src/engine'`, imported as `from '@engine'` with nothing
+  after it) got no import-sort bucket. The pattern ended in `/`, which cannot match a bare
+  specifier, so a project whose aliases are all barrels had every one of its own imports fall
+  through to the node_modules bucket, silently and with lint green. The pattern now admits a slash
+  or the end of the specifier. Type imports are unchanged: `simple-import-sort` appends a NUL to
+  those, so they still land in the type group.
+- The same alias declared twice, once bare and once with `/*`, no longer emits its pattern twice.
+
+Emitted patterns change shape (`^@ui/` becomes `^@ui(?:/|$)`), so a project may find `eslint --fix`
+wanting to reorder imports once after upgrading.
+
 ## 1.1.2
 
 ### Changed

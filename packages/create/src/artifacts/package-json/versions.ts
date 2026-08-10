@@ -51,7 +51,7 @@ export const VERSIONS: Record<string, string> = {
   'eslint': '^10.8.0',
   'eslint-config-next': '^16.3.0',
   // The sibling package: tracks its own version, and versions.test.ts fails the moment they diverge.
-  '@linteljs/eslint-config': '^1.1.2',
+  '@linteljs/eslint-config': '^1.1.3',
   'eslint-plugin-react-hooks': '^7.1.1',
   'eslint-plugin-better-tailwindcss': '^4.7.0',
   'eslint-plugin-solid': '^0.14.5',
