@@ -7,9 +7,13 @@ name: release
 #
 # Ported from `Faran52/eslint-plugin-tidy` and widened from one package to three.
 
+# Pushing the branch is the whole release. The branch name carries the version, this workflow waits
+# for `ci` and `e2e` to go green on the same commit, runs the release-only gates, publishes, and
+# only then writes the tag: a tag here means all three are on npm, rather than an intent to put them
+# there. Nothing releases off main, because main is not a `v*` branch.
 on:
   push:
-    tags:
+    branches:
       - 'v*'
 
 permissions:
@@ -21,32 +25,77 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm
     permissions:
-      # softprops/action-gh-release creates the GitHub release.
+      # The tag this writes at the end, and the GitHub release on it.
       contents: write
-      # The CI-green gate below reads check runs, which is its own scope.
-      checks: read
+      # The gate below reads other workflows' runs, which is its own scope.
+      actions: read
       # Required for both provenance attestations and OIDC trusted publishing.
       id-token: write
     steps:
-      # Full history, because the release-branch gate below asks which branches contain this commit,
-      # which a shallow clone cannot answer.
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
-      # A release comes off a release branch, never off main. The tag is what triggers this workflow,
-      # and a tag can be pushed onto any commit, so the tag alone does not say where the release came
-      # from; this does. `ci` and `e2e` already run on `v*` branches, so a release branch has been
-      # through the same gates main has by the time it is tagged.
-      - name: Refuse to publish a tag that is not on a release branch
+      # The branch name is the version, so `v1.2.0` releases 1.2.0. One place to say it, and the
+      # check below refuses the release rather than shipping whatever the files happen to hold.
+      - name: Verify every package is at the version the branch names
         run: |
-          BRANCHES="$(git branch -r --contains "$GITHUB_SHA" --format='%(refname:lstrip=3)' \
-            | grep -E '^v' || true)"
-          if [ -z "$BRANCHES" ]; then
-            echo "Tag $GITHUB_REF_NAME is on no v* branch. Cut one, let ci and e2e pass, then tag it." >&2
+          VERSION="${GITHUB_REF_NAME#v}"
+          for pkg in create eslint-config eslint-plugin; do
+            PKG="$(node -p "require('./packages/$pkg/package.json').version")"
+            if [ "$VERSION" != "$PKG" ]; then
+              echo "Branch $GITHUB_REF_NAME names $VERSION, but packages/$pkg is at $PKG" >&2
+              exit 1
+            fi
+          done
+
+      # A second push to the same branch would otherwise try to publish a version that is already on
+      # npm and fail deep in the publish step, after twenty minutes of gates. The tag written at the
+      # end of a successful run is what makes that knowable in one command, here.
+      - name: Refuse to release a version that already went out
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "$GITHUB_REF_NAME is tagged, so it is already published." >&2
+            echo "Bump the three versions and push the next v* branch." >&2
             exit 1
           fi
-          echo "Releasing from: $BRANCHES"
+
+      # `ci` and `e2e` start from the same push as this workflow, so they are still running when it
+      # begins. Waiting is what makes the publish depend on them; reading their conclusions without
+      # waiting would pass while both were still in progress, which is the whole failure this avoids.
+      # e2e installs eight targets for real and takes around eleven minutes.
+      - name: Wait for ci and e2e to pass on this commit
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const wanted = ['ci', 'e2e'];
+            const deadline = Date.now() + 40 * 60 * 1000;
+
+            while (Date.now() < deadline) {
+              const { data } = await github.rest.actions.listWorkflowRunsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                head_sha: context.sha,
+                per_page: 100,
+              });
+
+              const runs = wanted.map((name) => {
+                return data.workflow_runs.find((run) => run.name === name);
+              });
+
+              const failed = runs.filter((run) => run?.conclusion && run.conclusion !== 'success');
+              if (failed.length > 0) {
+                throw new Error(`Not releasing: ${failed.map((r) => `${r.name} ${r.conclusion}`).join(', ')}`);
+              }
+
+              if (runs.every((run) => run?.conclusion === 'success')) {
+                core.info('ci and e2e are green.');
+                return;
+              }
+
+              core.info(`waiting: ${runs.map((r, i) => `${wanted[i]}=${r?.status ?? 'not started'}`).join(', ')}`);
+              await new Promise((resolve) => setTimeout(resolve, 30_000));
+            }
+
+            throw new Error('ci and e2e did not finish within 40 minutes.');
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
@@ -57,24 +106,6 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - run: pnpm install --frozen-lockfile
-
-      - name: Refuse to publish a commit CI has not passed
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const { data } = await github.rest.checks.listForRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: context.sha,
-            });
-            const ci = data.check_runs.filter((run) => run.name !== context.job);
-            const failed = ci.filter((run) => run.conclusion && run.conclusion !== 'success');
-            if (ci.length === 0) {
-              throw new Error(`No CI runs found for ${context.sha}. Push the commit and let ci finish first.`);
-            }
-            if (failed.length > 0) {
-              throw new Error(`CI is not green for ${context.sha}: ${failed.map((r) => r.name).join(', ')}`);
-            }
 
       - run: pnpm check
 
@@ -88,19 +119,6 @@ jobs:
       - run: pnpm --filter @linteljs/eslint-config smoke
       - run: pnpm --filter @linteljs/create smoke
 
-      # One tag, three packages, one version. A mismatch means the wrong artifact ships, and with
-      # three of them it also means they disagree with each other.
-      - name: Verify the tag matches every package version
-        run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          for pkg in create eslint-config eslint-plugin; do
-            PKG="$(node -p "require('./packages/$pkg/package.json').version")"
-            if [ "$TAG" != "$PKG" ]; then
-              echo "Tag v$TAG does not match packages/$pkg at $PKG" >&2
-              exit 1
-            fi
-          done
-
       # No NODE_AUTH_TOKEN. Authentication is npm trusted publishing: pnpm exchanges the workflow's
       # OIDC token for a short-lived registry token, so there is no long-lived secret to steal.
       #
@@ -111,6 +129,16 @@ jobs:
       - run: pnpm --filter @linteljs/eslint-config publish --no-git-checks --provenance --access public
       - run: pnpm --filter @linteljs/create publish --no-git-checks --provenance --access public
 
+      # After the publish, never before: the tag is the record that all three are on npm, which is
+      # also what the "already went out" gate above reads on a second push to this branch.
+      - name: Tag the released commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$GITHUB_REF_NAME" -m "$GITHUB_REF_NAME"
+          git push origin "refs/tags/$GITHUB_REF_NAME"
+
       - uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
+          tag_name: ${{ github.ref_name }}
           generate_release_notes: true
