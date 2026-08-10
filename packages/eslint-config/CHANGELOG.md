@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1
+
+The same code as 1.1.0. That version was published by hand to bootstrap npm trusted publishing,
+which cannot be registered for a package that does not exist yet; this is the first release to go
+out through the pipeline that will publish every version after it.
+
 ## 1.1.0
 
 ### Added

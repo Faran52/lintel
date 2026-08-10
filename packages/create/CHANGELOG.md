@@ -1,9 +1,26 @@
 # Changelog
 
+## 1.1.1
+
+The same code as 1.1.0. That version was published by hand to bootstrap npm trusted publishing,
+which cannot be registered for a package that does not exist yet; this is the first release to go
+out through the pipeline that will publish every version after it. Nothing in the package changed,
+and the 1.1.0 entry below is the one to read.
+
 ## 1.1.0
 
 ### Added
 
+- Answers are recorded in `lintel.config.json` at the project root, under a versioned schema, and
+  are what `sync` and a second `--skip-scaffold` run read. It replaces the `lintel` field in
+  `package.json`, which is no longer written.
+- A `sync` command: re-emits what the recorded answers imply and reports each file as unchanged,
+  changed, missing or obsolete, writing nothing until `--force`. A file that a changed answer made
+  obsolete is removed rather than left behind.
+- Two questions about coding agents: which ones the project is for (Claude Code, Codex, at least
+  one) and which plugins to declare. Both hosts read one `plugins/linteljs/`, with a manifest each.
+- A project name question, asked first and validated as npm would validate it. It is skipped when
+  the name came in as an argument, and with `--skip-scaffold`, where the directory is already named.
 - A state store answer, resolved per target: Zustand for React, Next.js and React Native,
   `@ngrx/signals` for Angular, and Pinia for Vue, whose `--pinia` flag now follows the answer
   instead of always being passed. Solid and Svelte are never asked: their stores ship inside the
@@ -18,6 +35,12 @@
 
 ### Changed
 
+- The questionnaire is asked over `@clack/prompts`, this package's first runtime dependency: arrow
+  keys and checkboxes rather than typed text, a hint on every option, and each product spelled the
+  way its own documentation spells it. The state store question is a radio over the target's store
+  plus None, and the agents question is a checkbox list requiring at least one.
+- Ctrl+C during the questionnaire exits 130 having written nothing, and says so plainly. A run with
+  no terminal at all is still refused, separately, with advice to pass `--yes`.
 - TypeScript only. The language question is gone, every scaffolder is invoked with its TypeScript
   flags, and running against a project that recorded `typescript: false` refuses with a clear
   message rather than silently converting it.

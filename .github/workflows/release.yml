@@ -28,7 +28,25 @@ jobs:
       # Required for both provenance attestations and OIDC trusted publishing.
       id-token: write
     steps:
+      # Full history, because the release-branch gate below asks which branches contain this commit,
+      # which a shallow clone cannot answer.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # A release comes off a release branch, never off main. The tag is what triggers this workflow,
+      # and a tag can be pushed onto any commit, so the tag alone does not say where the release came
+      # from; this does. `ci` and `e2e` already run on `v*` branches, so a release branch has been
+      # through the same gates main has by the time it is tagged.
+      - name: Refuse to publish a tag that is not on a release branch
+        run: |
+          BRANCHES="$(git branch -r --contains "$GITHUB_SHA" --format='%(refname:lstrip=3)' \
+            | grep -E '^v' || true)"
+          if [ -z "$BRANCHES" ]; then
+            echo "Tag $GITHUB_REF_NAME is on no v* branch. Cut one, let ci and e2e pass, then tag it." >&2
+            exit 1
+          fi
+          echo "Releasing from: $BRANCHES"
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
