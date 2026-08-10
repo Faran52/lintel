@@ -6,6 +6,19 @@ A lint, type and test standard that lives in one place instead of being copied b
 pnpm create @linteljs my-app
 ```
 
+Or with whichever runner you already have:
+
+```bash
+npm create @linteljs my-app
+yarn create @linteljs my-app     # Yarn 2+; on Yarn 1 use npx
+bun create @linteljs my-app
+
+pnpm dlx @linteljs/create my-app # the long form, identical on every runner
+npx @linteljs/create my-app
+yarn dlx @linteljs/create my-app
+bunx @linteljs/create my-app
+```
+
 Scaffolds with the framework's own official generator, then layers on ESLint flat config,
 `tsconfig`, git hooks, a test setup and rules for coding agents. Eight targets: React, Next.js,
 Vue, Svelte, Solid, Angular, React Native through Expo, and Manifest V3 browser extensions.

@@ -300,6 +300,63 @@ Do not change the record's `build` or move a test back under `src/app/` without 
 `pnpm --filter @linteljs/create test:e2e -t react-native`. That command is the only thing that sees
 any of this.
 
+## Releasing
+
+Push a branch named for the version. That is the whole ritual:
+
+```
+bump the three package versions, and the two constants that mirror them
+git switch -c v1.2.0 && git push -u origin v1.2.0
+```
+
+`ci`, `e2e` and `release` all start from that one push. `release` waits for the first two, runs the
+gates that are too slow for `ci`, publishes all three, and only then writes the `v1.2.0` tag and the
+GitHub release. Nothing releases off `main`, because `main` is not a `v*` branch.
+
+**One version across three packages.** They are one product with a one-way dependency, and
+`@linteljs/create` writes a range for `@linteljs/eslint-config` into every project it generates. Three
+independently drifting versions would mean a matrix of combinations nothing tests, so the branch
+name is the single place the version is stated and the run refuses if any package disagrees with it.
+
+**The branch is the trigger, not a tag.** A tag can be pushed onto any commit, so a tag alone never
+says where a release came from: an earlier design triggered on the tag and needed a separate gate
+asking which branches contained it. Triggering on the branch makes that gate tautological, and it
+also ends the collision where a branch and a tag shared a name and `git push origin v1.1.1` had to
+be spelled as a full ref.
+
+**The tag is written after the publish, never before.** A tag then means all three are on npm rather
+than that somebody intended to put them there, which is what makes it usable as the check that
+refuses a second push to the same branch. The failure it prevents is real: without it, re-pushing a
+released branch runs forty minutes of gates and dies in the publish step on a version conflict.
+
+**`release` waits for `ci` and `e2e` rather than reading their conclusions.** They start from the
+same push, so they are still running when it begins, and an in-progress run has no conclusion to
+fail on. Reading without waiting passes vacuously while both are still going, which is the one thing
+the gate exists to prevent. It was written that way, correctly, for a tag pushed after `ci` had
+already finished, and became wrong the moment the trigger moved to the branch.
+
+**No `NPM_TOKEN`.** Each package has a trusted publisher on npmjs.com naming this repository, this
+workflow file and the `npm` environment, and pnpm exchanges the workflow's OIDC token for a
+short-lived registry token. There is no long-lived secret to leak. The workflow filename is part of
+that registration, so renaming `release.yml` breaks publishing until all three are re-registered.
+
+**The first release went out by hand, once.** npm cannot register a trusted publisher for a package
+that does not exist, so 1.1.0 was published locally to bootstrap the three names and 1.1.1 is the
+same code released through the pipeline. That is the only reason two versions hold identical
+artifacts, and it is not a step any later release repeats.
+
+**Publish order is plugin, then config, then CLI.** It is the dependency order reversed, so a
+consumer installing while a release is in flight resolves a complete tree at every point rather than
+finding a config whose plugin is not there yet.
+
+**A version bump touches five files, not three.** The three `package.json`s, plus
+`packages/eslint-plugin/src/plugin.ts`, which hand-writes `meta.version` because ESLint reads it off
+the plugin object, and `packages/create/src/artifacts/package-json/versions.ts`, which pins the range
+generated projects get for `@linteljs/eslint-config`. Both are held against `package.json` by a test
+(`meta.test.ts`, `versions.test.ts`), so a missed one fails `pnpm check` rather than shipping wrong.
+Neither is derived today, and nothing has been measured about whether it could be; the tests are why
+that has stayed a papercut instead of a defect. Three `CHANGELOG.md` files change too, by hand.
+
 ## Workspace lint exemptions
 
 The measurements behind every block in the root `eslint.config.ts`. They live here rather than

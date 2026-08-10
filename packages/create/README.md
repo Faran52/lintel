@@ -10,6 +10,32 @@ pnpm create @linteljs my-app
 It does not reimplement any framework's scaffolder. It shells out to the official one, then
 applies everything that normally gets copied by hand from your last project.
 
+## Running it
+
+The argument is the project name, and giving it here is what skips the first question. Leave it off
+and you are asked for it.
+
+| runner | short | long |
+| --- | --- | --- |
+| pnpm | `pnpm create @linteljs my-app` | `pnpm dlx @linteljs/create my-app` |
+| npm | `npm create @linteljs my-app` | `npx @linteljs/create my-app` |
+| Yarn 2+ | `yarn create @linteljs my-app` | `yarn dlx @linteljs/create my-app` |
+| Bun | `bun create @linteljs my-app` | `bunx @linteljs/create my-app` |
+
+Both columns run the same thing. Yarn 1 is the one exception: its `yarn create @scope` looks for a
+binary named `create`, and this package's is `create-linteljs`, so it installs and then fails to
+launch. Use `npx @linteljs/create my-app` there.
+
+Which runner you launch with says nothing about the generated project. The package manager it will
+use is a question, answered separately.
+
+If your pnpm sets `minimumReleaseAge`, a release published inside that window is refused until it
+ages. The override has to come before `create`, not after:
+
+```bash
+pnpm --config.minimumReleaseAge=0 create @linteljs my-app
+```
+
 ## Why
 
 Copying a config between projects works exactly once. After that the copies drift, and the
