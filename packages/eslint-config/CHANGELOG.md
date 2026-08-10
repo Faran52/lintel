@@ -2,8 +2,15 @@
 
 ## 1.1.2
 
-No change to this package. The three versions move together, so this is 1.1.1 under the version its
-release branch named.
+### Changed
+
+- The README says how to extend the config, which it never did: adding a plugin this package does
+  not ship, turning one of its rules off, and scoping an exemption to a path. Also the two things
+  that bite first, both confirmed against a real ESLint rather than asserted: a plugin name already
+  taken fails the entire config with `Cannot redefine plugin` when the object differs, and
+  `eslint.config.js` is emitted rather than preserved, so `sync --force` overwrites edits made to it.
+
+No change to the layers themselves.
 
 ## 1.1.1
 
