@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.2
+
+### Changed
+
+- The README documents every way to launch the CLI rather than one, with both the `create`
+  shorthand and the `dlx` form for pnpm, npm, Yarn 2+ and Bun. Yarn 1 is called out as the one that
+  does not work: its `yarn create @scope` looks for a binary named `create`, and this package's is
+  `create-linteljs`, so it installs and then fails to launch. Use `npx` there.
+
+No change to the CLI itself.
+
 ## 1.1.1
 
 The same code as 1.1.0. That version was published by hand to bootstrap npm trusted publishing,

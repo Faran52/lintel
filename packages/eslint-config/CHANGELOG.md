@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2
+
+No change to this package. The three versions move together, so this is 1.1.1 under the version its
+release branch named.
+
 ## 1.1.1
 
 The same code as 1.1.0. That version was published by hand to bootstrap npm trusted publishing,
