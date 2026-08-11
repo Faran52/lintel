@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.1.4
+
+### Fixed
+
+- `.claude/settings.json` is merged rather than emitted. A project keeps its own hooks, its own
+  plugins and top-level keys this CLI has never heard of, while the plugins answer still decides
+  `enabledPlugins` and `extraKnownMarketplaces`. A real project lost `includeCoAuthoredBy`, a
+  PreToolUse hook and two unrelated plugins to one sync before this.
+- `@types/node` is `^24.13.3`, the LTS the `engines` field already requires, rather than `^26`.
+- `scripts/typecheckStaged.ts` reads its override by destructuring. Under the version above,
+  `env['TYPECHECK_COMMAND']` reads as index-signature access to `dot-notation`, and the dot form it
+  asks for is refused by a tsconfig setting `noPropertyAccessFromIndexSignature`.
+
+### Changed
+
+- The test setup is `__mocks__/setupTests.tsx` on React, Next and React Native, where a setup that
+  renders anything needs JSX. Vue, Svelte, Angular, Solid and the extension target keep `.ts`. A
+  project that already holds one spelling keeps it, config included: the emitted `vitest.config.ts`
+  points at the file that is there rather than the one this version would write.
+- The README leads with how to run the thing on any runner. It read as pnpm-only, because the
+  first line was a bare `pnpm create` and the table of alternatives sat far below it. The target
+  table now also says what it never did: each scaffolder is invoked through the package manager
+  you answered with, so an npm project scaffolds through `npm create`.
+
 ## 1.1.3
 
 No change to this package. The three versions move together, so this carries the import-sort fix in

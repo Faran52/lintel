@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.4
+
+No change to this package. The three versions move together, so this carries the `@linteljs/create`
+fixes.
+
 ## 1.1.3
 
 No change to this package. The three versions move together, so this carries the import-sort fix in
