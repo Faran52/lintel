@@ -18,10 +18,7 @@ import { exists } from '../utils/fsUtils';
 import type { TargetId } from '../../model/answers/answers';
 import type { StarterRename } from '../../model/targets';
 
-// Fixes defects no fixer can reach; gated on `fresh` by the caller, unlike the ungated `rewrite.ts`.
-
-// Each transform matches exact text a generator wrote, so a small upstream change silently stops it firing; a match of
-// nothing is reported rather than swallowed, since it otherwise looks identical to a fix that was never needed.
+// Only fresh projects get repairs; exact generator text turns upstream drift into a notice.
 const applyStarterFixes = async (
   cwd: string,
   target: TargetId,
@@ -40,13 +37,11 @@ const applyStarterFixes = async (
       before = await readFile(full, 'utf8');
     }
     catch {
-      // A generator that changed its starter layout is not a reason to fail a generate.
       continue;
     }
 
     const after = transform === undefined ? before : transform(before);
 
-    // A move always writes, because the destination is what changed rather than the text.
     if (moveTo !== undefined) {
       const destination = join(cwd, moveTo);
 
@@ -67,17 +62,12 @@ const applyStarterFixes = async (
   }
 };
 
-// The specifier a module is imported by: its path with a script extension dropped and any other kept, so
-// `./themed-text` names `themed-text.tsx` and `./x.module.css` names itself.
+// Drop script extensions only, preserving names such as `x.module.css`.
 const specifierFor = (path: string): string => {
   return path.replace(/\.[cm]?tsx?$/, '');
 };
 
-/**
- * Every specifier a rename invalidates, longest first: keyed on the trailing segment with its leading slash so one
- * entry serves both `./themed-text` and `@/components/themed-text`, and longest-first keeps `/animated-icon.web` from
- * matching as `/animated-icon` with a stray `.web` left behind.
- */
+// Match trailing path segments, longest first, to avoid partial rename matches.
 const specifierEdits = (renames: StarterRename[]): [string, string][] => {
   return renames.map(({ from, to }): [string, string] => {
     return [`/${basename(specifierFor(from))}`, `/${basename(specifierFor(to))}`];
@@ -88,17 +78,12 @@ const specifierEdits = (renames: StarterRename[]): [string, string][] => {
 
 const repointSpecifiers = (source: string, edits: [string, string][]): string => {
   return edits.reduce((text, [from, to]) => {
-    // Anchored on the closing quote, so `/themed-text'` matches and `/themed-text.module.css'` does not: a bare
-    // `replaceAll` of the segment would rewrite the stem of a longer name.
+    // Include the closing quote to avoid rewriting a longer filename's stem.
     return text.replaceAll(`${from}'`, `${to}'`).replaceAll(`${from}"`, `${to}"`);
   }, source);
 };
 
-/**
- * Renames the generator's own files onto this project's convention and repoints what imported them; runs after
- * `starterFixes`, whose entries match text at the generator's original paths. `rename` handles a case-only move
- * (`collapsible.tsx` to `Collapsible.tsx`) on a case-insensitive filesystem; checked on APFS rather than assumed.
- */
+// Rename after starter fixes, which match original paths; `rename` handles case-only APFS moves.
 const renameStarterFiles = async (
   cwd: string,
   target: TargetId,
@@ -111,12 +96,12 @@ const renameStarterFiles = async (
     const present = await exists(join(cwd, entry.from));
 
     if (!present) {
-      // Same refusal `applyStarterFixes` makes, said out loud: a generator that moved its own file is not a reason to
-      // fail a generate.
+      // Warned, not thrown: a generator that moved its own file is not a reason to fail a generate.
       onNotice?.(`  starter rename for ${entry.from} found nothing: the generator changed what it writes.`);
       continue;
     }
 
+    // Always a write, since the destination is what changed rather than the text.
     await rename(join(cwd, entry.from), join(cwd, entry.to));
     moved.push(entry);
     onWrite?.(entry.to);

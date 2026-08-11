@@ -10,8 +10,7 @@ interface FunctionName {
   name: string;
 }
 
-// The three function nodes, with `id` readable across the union: an arrow declares none, and
-// ESLint types a declaration's as non-null even though `export default function () {}` carries null.
+// Read off the union, not a narrowed arm, so the null `export default function () {}` carries survives.
 type FunctionLike = Extract<
   RuleNode,
   { type: 'ArrowFunctionExpression' | 'FunctionDeclaration' | 'FunctionExpression' }
@@ -21,7 +20,6 @@ type FunctionLike = Extract<
 
 type MemberExpressionNode = Extract<RuleNode, { type: 'MemberExpression' }>;
 
-// Read off the union rather than a narrowed arm, so the null a default export carries stays in the type.
 const declarationNameOf = (fn: FunctionLike): string => {
   return fn.id?.name ?? '';
 };
@@ -40,14 +38,12 @@ const bindingNameOf = (fn: FunctionLike): string => {
   let wrapped: Ranged = fn;
   let { parent } = fn;
 
-  // `const Widget = memo(forwardRef(fn))`: climb the call wrappers the component is an argument
-  // of, so the declarator names it. A callee stays put, because the variable holds its result.
+  // Climb wrapper arguments to the component's declarator, never wrapper callees.
   while (parent.type === 'CallExpression' && isArgumentOf(parent, wrapped)) {
     wrapped = parent;
     ({ parent } = parent);
   }
 
-  // The variable's name, not the expression's own: `const Widget = function inner() {}` binds Widget.
   if (parent.type === 'VariableDeclarator' && parent.id.type === 'Identifier') {
     return parent.id.name;
   }
@@ -67,7 +63,7 @@ export const preferDestructuredProps = createRule('prefer-destructured-props', {
     docs: {
       category: 'functions',
       language: 'universal',
-      // Off by default: the uppercase-name heuristic only means "component" where a framework renders them.
+      // Uppercase implies a component only in rendering frameworks.
       recommended: false,
       description: 'Requires props to be destructured in the signature rather than read member by member.',
     },
@@ -77,20 +73,15 @@ export const preferDestructuredProps = createRule('prefer-destructured-props', {
     schema: [],
   },
   create: (context) => {
-    /**
-     * Every member-access object in the file, keyed by range, mapped to whether that access could be a
-     * destructure. Collected from the traversal, not through ancestors: the pre-8.38 ancestor reader only answers
-     * for the node being visited, so a reference's parent is unreachable there, and this shape works on every major.
-     */
+    // Record member objects during traversal: old ESLint cannot read a reference's parent.
     const memberObjects = new Map<string, boolean>();
 
     return {
       'MemberExpression': (node: MemberExpressionNode) => {
-        // A computed read with a dynamic key cannot be destructured, so it counts as a whole-value use.
         memberObjects.set(spanOf(node.object), !node.computed || node.property.type === 'Literal');
       },
 
-      // Exit, not enter: the members inside the function have all been visited by then.
+      // Visit after members have been recorded.
       ':function:exit': (node: FunctionLike) => {
         if (!/^[A-Z]/.test(bindingNameOf(node))) {
           return;
@@ -113,12 +104,11 @@ export const preferDestructuredProps = createRule('prefer-destructured-props', {
 
         const { references } = propsVariable;
 
-        // An unused parameter is `no-unused-vars`' finding, not this rule's.
         if (references.length === 0) {
           return;
         }
 
-        // One whole-value use (a spread, an argument, a return, an alias) means the object itself is wanted.
+        // A whole-value use means the object itself is needed.
         if (references.some((reference) => {
           return memberObjects.get(spanOf(reference.identifier)) !== true;
         })) {

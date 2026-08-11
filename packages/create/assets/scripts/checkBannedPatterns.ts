@@ -1,6 +1,6 @@
 /**
- * Mechanical floor for `.claude/rules/type-standards.md`, run by lint-staged and the
- * PostToolUse(Edit|Write) hook. `sync` restores it when missing but never overwrites your lists.
+ * Mechanical floor for the type standards, run by lint-staged and the PostToolUse(Edit|Write) hook.
+ * `sync` restores it when missing but never overwrites your lists.
  *
  * Usage: node scripts/checkBannedPatterns.ts src/foo.ts src/bar.tsx src/App.vue
  */
@@ -10,20 +10,18 @@ import { argv, exit } from 'node:process';
 interface BannedPattern {
   name: string;
   re: RegExp;
-  // Test the raw line rather than the string- and comment-stripped one.
   raw?: boolean;
-  // Shapes the rule file grants explicitly: a line matching one is not a hit.
   allowed?: RegExp[];
 }
 
 type TypeSafety = 'strict' | 'relaxed';
 
-// The only three spellings of `: unknown` the rule file grants. Anything else is the escape hatch.
+// Only these `: unknown` forms are allowed.
 const NARROWING_GUARD = /:\s*unknown\b[^)]*\)\s*:\s*\w+\s+is\s/;
 const PARSED_JSON = /:\s*unknown\s*=\s*JSON\.parse\(/;
 const DYNAMIC_IMPORT = /:\s*unknown\s*=\s*await import\(/;
 
-// Tested raw and anchored at the head of a comment: matching the bare word flags every sentence naming one.
+// Anchor directives to comments so ordinary prose can name them.
 const directive = (name: string): RegExp => {
   return new RegExp(`(?://|/\\*)\\s*${name}`);
 };
@@ -31,13 +29,11 @@ const directive = (name: string): RegExp => {
 // Which floor this project runs. `@linteljs/create` writes this line from the `typeSafety` answer.
 const TYPE_SAFETY: TypeSafety = 'strict';
 
-// A double cast erases the type on the way through, so tsc has nothing left to reject.
 const ALWAYS_BANNED: BannedPattern[] = [
   { name: 'as unknown as', re: /\bas unknown as\b/ },
   { name: 'eslint-disable', re: directive('eslint-disable'), raw: true },
 ];
 
-// The escape hatches `strict` bans outright and `relaxed` leaves to review.
 const STRICT_ONLY: BannedPattern[] = [
   { name: 'as never', re: /\bas never\b/ },
   { name: 'as unknown', re: /\bas unknown\b/ },
@@ -51,7 +47,7 @@ const STRICT_ONLY: BannedPattern[] = [
   { name: 'index signature', re: /\[[A-Za-z_]\w*:\s*(?:string|number|symbol)]/ },
 ];
 
-// Looked up rather than compared: `=== 'strict'` on a const narrows away the branch flipping the line reaches.
+// Lookup preserves the relaxed branch for coverage.
 const FLOORS: Record<TypeSafety, BannedPattern[]> = {
   strict: [...ALWAYS_BANNED, ...STRICT_ONLY],
   relaxed: ALWAYS_BANNED,
@@ -59,13 +55,10 @@ const FLOORS: Record<TypeSafety, BannedPattern[]> = {
 
 const BANNED: BannedPattern[] = FLOORS[TYPE_SAFETY];
 
-// Add project-specific patterns here.
 const PROJECT_BANNED: BannedPattern[] = [];
 
-// The checker itself holds the patterns as data, so scanning it would self-flag.
 const BASE_SKIPPED = ['/scripts/'];
 
-// Add an exemption here with the reason beside it, and remove it once the file is swept.
 const PROJECT_SKIPPED: string[] = [];
 
 const patterns: BannedPattern[] = [...BANNED, ...PROJECT_BANNED];
@@ -77,7 +70,7 @@ const isSkipped = (filePath: string): boolean => {
   });
 };
 
-// `import * as x`, re-export braces and rename clauses all hold `as` where it is never an assertion.
+// Ignore import and alias `as`, which are not assertions.
 const isAliasOrImportLine = (line: string): boolean => {
   return line.includes('* as ')
     || /^\s*import\b/.test(line)
@@ -85,20 +78,18 @@ const isAliasOrImportLine = (line: string): boolean => {
     || /^\s*(?:type\s+)?[A-Za-z_]\w*\s+as\s+[A-Za-z_]\w*,?\s*$/.test(line);
 };
 
-// Same width, same line count, so every reported line number still points where it did.
+// Preserve offsets so reported lines remain correct.
 const blankSpan = (match: string): string => {
   return match.replace(/[^\n]/g, ' ');
 };
 
-// Whole-file, comments before templates: a per-line strip cannot see either end of a multi-line
-// span, and prose holds unmatched backticks a template-first pass would pair across the file.
+// Strip comments before templates so unmatched prose backticks cannot span the file.
 const blankMultilineSpans = (content: string): string => {
   return content
     .replace(/\/\*[\s\S]*?\*\//g, blankSpan)
     .replace(/`(?:\\[\s\S]|[^`\\])*`/g, blankSpan);
 };
 
-// What is left after the pass above: single-line strings and line comments.
 const stripStringsAndComments = (line: string): string => {
   return line
     .replace(/\\['"]/g, '  ')
@@ -110,7 +101,7 @@ const SCRIPT_FILE = /\.[cm]?tsx?$/;
 const SFC_FILE = /\.(?:vue|svelte)$/;
 const SFC_SCRIPT_BLOCK = /(<script\b[^>]*>)([\s\S]*?)<\/script>/gi;
 
-// Only a .vue/.svelte `<script>` block is TypeScript; blanked rather than dropped so line numbers still match.
+// Keep only SFC script blocks, blanking the rest to preserve line numbers.
 const scriptBlocksOnly = (content: string): string => {
   let output = '';
   let cursor = 0;

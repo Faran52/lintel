@@ -1,5 +1,4 @@
-// The half of the rule that says no: whether the body survives becoming an arrow and
-// whether the position accepts one at all. `writeUtils.ts` is the other half.
+// Reject conversions whose body or position would change meaning; `writeUtils.ts` handles output.
 import { adjacentPairs } from '../../utils/layoutUtils.ts';
 import { FUNCTION_TYPES } from '../../utils/ruleUtils.ts';
 
@@ -11,11 +10,8 @@ import type {
 } from '../../utils/ruleUtils.ts';
 import type { FunctionLike } from './writeUtils.ts';
 
-/**
- * Parent positions where a bare arrow can stand in for a function expression: an allow-list, not a block-list,
- * since anything that keeps consuming after a block-bodied arrow (`.name`, an operator, `instanceof`, `**`, an
- * optional call, a class `extends`) breaks it, and an allow-list fails closed rather than open.
- */
+// An allow-list, not a block-list: anything that keeps consuming after a block-bodied arrow
+// (`.name`, an operator, `instanceof`, `**`, an optional call, `extends`) breaks, so this fails closed.
 const SAFE_FUNCTION_PARENTS = new Set([
   'ArrayExpression',
   'AssignmentExpression',
@@ -29,8 +25,7 @@ const SAFE_FUNCTION_PARENTS = new Set([
   'VariableDeclarator',
 ]);
 
-// Parent positions where a `const` can stand in for a function *declaration*: Annex B makes a sloppy-mode
-// function declaration legal in an unbraced statement position (an `if`/`else` body, a label) `const` cannot take.
+// Annex B permits sloppy function declarations in unbraced positions where `const` cannot go.
 export const SAFE_DECLARATION_PARENTS = new Set([
   'BlockStatement',
   'ExportNamedDeclaration',
@@ -46,23 +41,18 @@ export const isInsideFunctionBody = (sourceCode: AncestorReader, node: Ancestor)
   });
 };
 
-// Whether the function sits in a parent that will not take an arrow: `void`, `typeof`,
-// `as` and `satisfies` all take it as a bare operand, where an arrow needs parentheses.
+// `void`, `typeof`, `as` and `satisfies` need parentheses around an arrow.
 export const sitsInUnsafePosition = (sourceCode: SourceCode, fn: FunctionLike): boolean => {
   const { parent } = fn;
 
-  // An arrow cannot be constructed, so a `new` callee is out however punctuated; an argument to `new` is fine.
+  // An arrow cannot be constructed, so a `new` callee is out. An argument to `new` is fine.
   if (parent.type === 'NewExpression') {
     return parent.callee === fn;
   }
 
-  /**
-   * IIFE: `(function(){})()` wraps the function, so the arrow inherits the parens and still parses, while
-   * Crockford's `(function(){}())` wraps the call, leaving the arrow bare in callee position. The token right
-   * after the function is `)` in the first spelling and `(` in the second.
-   */
+  // `(function(){})()` parenthesizes the function, so the arrow keeps the parens; Crockford's
+  // `(function(){}())` parenthesizes the call, leaving it bare. The token after is `)` or `(`.
   if (parent.type === 'CallExpression') {
-    // An argument is a safe position. Only the callee is at risk.
     return parent.callee === fn && sourceCode.getTokenAfter(fn)?.value !== ')';
   }
 
@@ -74,19 +64,15 @@ const isAssertionFunction = (fn: FunctionLike): boolean => {
   return annotation?.type === 'TSTypePredicate' && annotation.asserts === true;
 };
 
-// An explicit `this` parameter is a plain identifier in first position and nothing else:
-// a parameter property is constructor-only syntax, and this rule never visits a `MethodDefinition`.
+// A `this` parameter is the first identifier; parameter properties are constructor-only.
 const hasThisParameter = (fn: FunctionLike): boolean => {
   const [first] = fn.params;
 
   return first?.type === 'Identifier' && first.name === 'this';
 };
 
-/**
- * Whether the parameter list binds the same name twice: a non-strict `function` may (comment-parser's
- * `parse(source, parse, _, _, tokenizers)`), where an arrow may not. Identifiers only is exhaustive: anything
- * else makes the list non-simple, and a non-simple list repeating a name is a SyntaxError before a rule sees it.
- */
+// A non-strict `function` may bind a name twice where an arrow may not. Identifiers only is
+// exhaustive: any other param makes the list non-simple, and repeating a name there is a SyntaxError.
 const hasDuplicateParameters = (fn: FunctionLike): boolean => {
   const names = fn.params.flatMap((param) => {
     return param.type === 'Identifier' ? [param.name] : [];
@@ -101,12 +87,8 @@ const containsToken = (sourceCode: SourceCode, node: RuleNode, type: string, val
   });
 };
 
-/**
- * Whether the function reads the `arguments` object rather than a property access: `node.arguments.length` is
- * an `Identifier` token too, so only a `.`/`?.` token in front rules it out. Shorthand `{ arguments }` stays
- * unsafe by design, since a missed report costs less than a wrong one. Paired rather than indexed, so the token
- * in front is always real: a function node opens on `function`, `async` or `(`, never on `arguments`.
- */
+// `node.arguments.length` is an Identifier too, so only a `.`/`?.` in front rules it out. Paired
+// rather than indexed, since a function opens on `function`, `async` or `(`, never on `arguments`.
 const readsArgumentsObject = (sourceCode: SourceCode, fn: FunctionLike): boolean => {
   return [...adjacentPairs(sourceCode.getTokens(fn))].some(([before, token]) => {
     return token.type === 'Identifier'
@@ -116,7 +98,7 @@ const readsArgumentsObject = (sourceCode: SourceCode, fn: FunctionLike): boolean
   });
 };
 
-// `new.target` is three tokens, not one identifier, so it is matched as a sequence; an arrow has none to inherit.
+// `new.target` has no arrow equivalent, so match its three-token sequence.
 const NEW_DOT_TARGET: [string, string][] = [
   ['Keyword', 'new'],
   ['Punctuator', '.'],

@@ -1,4 +1,3 @@
-// Runs the project typecheck and filters the errors down to the staged files; exits 1 if any hit.
 import { type ExecException, execSync } from 'node:child_process';
 import {
   argv,
@@ -16,7 +15,6 @@ const isExecSyncError = (value: unknown): value is ExecSyncError => {
   return value instanceof Error && 'stdout' in value && 'stderr' in value;
 };
 
-// Overridable so a Vue or Svelte project can point at vue-tsc / svelte-check instead.
 const TYPECHECK_COMMAND = env['TYPECHECK_COMMAND'] ?? 'npm run typecheck';
 const ANSI_ESCAPE_GLOBAL = /\u001b\[[0-9;]*m/g;
 

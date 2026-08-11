@@ -15,11 +15,7 @@ import { presetOf } from './utils/presetUtils';
 import type { Linter } from 'eslint';
 import type { BaseOptions, Layer } from './types';
 
-/**
- * Without a files glob these presets crash on a parser shape they can't read: `@stylistic/indent` throws
- * on an Angular template rather than false-positives. `.vue`/`.svelte` are in, their layers nesting a JS
- * parser; markup is out, owned by `html()` and `angular()`.
- */
+// Limit presets to script parsers: Angular markup crashes `@stylistic/indent` and is owned by `angular()`.
 const SCRIPT_FILES = [`**/*.{${SCRIPT_EXTENSIONS},vue,svelte}`];
 
 // Nothing here is type-aware, so `base` alone works on a plain JavaScript repository.
@@ -33,8 +29,7 @@ export const base = (options: BaseOptions = {}): Layer => {
     resolver,
   } = options;
 
-  // Spread, not restated: without `import-x/parsers` naming a parser for `.cts`/`.mts`,
-  // `import-x/no-cycle` can't parse the file it resolved and returns early without reporting.
+  // Keep import-x's parser settings so `.cts` and `.mts` cycles are checked.
   const importSettings: Linter.Config['settings'] = resolver?.project
     ? { ...importX.flatConfigs.typescript.settings, 'import-x/resolver': { typescript: { project: resolver.project } } }
     : importX.flatConfigs.typescript.settings;
@@ -44,8 +39,7 @@ export const base = (options: BaseOptions = {}): Layer => {
 
     { ...presetOf(importX.flatConfigs.typescript, 'import-x/typescript')[0], settings: importSettings },
 
-    // The syntax-only half: the import-x settings above name a parser for these extensions, so
-    // `base` has to be able to parse them. `typescript()` adds the program.
+    // Parse TypeScript here; `typescript()` adds its program.
     {
       name: '@linteljs/base/typescript-syntax',
       files: ['**/*.{ts,tsx,mts,cts}'],
@@ -54,15 +48,14 @@ export const base = (options: BaseOptions = {}): Layer => {
 
     ...presetOf(sonarjs.configs?.['recommended'], 'sonarjs/recommended', SCRIPT_FILES),
     ...presetOf(stylistic.configs.recommended, 'stylistic/recommended', SCRIPT_FILES),
-    // `flat/recommended`, not `recommended`: the bare name is the eslintrc object, and this package is flat-only.
+    // `recommended` is eslintrc; this package is flat-only.
     ...presetOf(lintel.configs['flat/recommended'], '@linteljs/flat/recommended', SCRIPT_FILES),
 
     {
       name: '@linteljs/base',
       files: SCRIPT_FILES,
 
-      // `import-x`, `sonarjs` and `@stylistic` register themselves in the configs spread above;
-      // a second registration risks "Cannot redefine plugin".
+      // Those plugins are already registered by the presets.
       plugins: {
         'check-file': checkFile,
         'simple-import-sort': simpleImportSort,
@@ -70,8 +63,7 @@ export const base = (options: BaseOptions = {}): Layer => {
       },
 
       rules: {
-        // `ignorePattern` exempts a line that is only an attribute value (an SVG `d` has no legal break).
-        // `ignoreTemplateLiterals` is absent on purpose: it exempts any line holding one, not only one that is.
+        // Exempt standalone attributes, not every line containing a template literal.
         '@stylistic/max-len': ['error', {
           code: 120,
           ignoreUrls: true,

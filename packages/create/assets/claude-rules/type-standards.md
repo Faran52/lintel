@@ -48,7 +48,9 @@ stops updating.
 
 - A comment says **why**: the constraint that forced the code, the measurement behind a constant,
   the bug a guard prevents. If it restates the code, delete it.
-- `//` for one line; JSDoc only when the comment genuinely runs to more.
+- `//` for one or two lines.
+- `/** */` JSDoc at three lines or more.
+- Comments stay minimal either way. Length is not a virtue; the shortest comment that carries the reason wins.
 - No comments in test files. The test name carries the meaning.
 
 ## Tests

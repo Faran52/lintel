@@ -10,32 +10,23 @@ import { isAbsence } from '../utils/fsUtils';
 
 import type { TargetId } from '../../model/answers/answers';
 
-// Confined to `src/`, ungated on `fresh` (unlike `repair.ts`): a non-compiling source is never a decision the project
-// made.
-
-// The generator's own source lives here for all eight targets.
+// Always rewrite `src/`: non-compiling generator output is not a project decision.
 export const SOURCE_ROOT = 'src';
 
 const SCRIPT_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
 
-// The specifier position of an import; the `(?<!\.d)` guard keeps `./types.d.ts`, extension and all, out of it.
+// Keep `.d.ts` extensions, which are part of their specifier.
 const RELATIVE_TS_IMPORT
   = /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(['"])(\.{1,2}\/[^'"\n]*?)(?<!\.d)\.[cm]?tsx?\2/g;
 
-// A named import clause, captured as its specifier list and the module it comes from.
 const IMPORT_CLAUSE = /import\s+\{([^}]*)\}\s+from\s+(['"])([^'"]+)\2/g;
 
-/**
- * Drops the extension from relative `.ts`/`.tsx` imports. Every Vite template's entry has one, which compiles only
- * under `allowImportingTsExtensions`, a bundler-only escape hatch the emitted tsconfig leaves off; rewriting three
- * lines beats carrying that flag for the project's whole life.
- */
+// Remove relative TypeScript extensions instead of enabling the bundler-only tsconfig escape hatch.
 export const stripTsExtensions = (source: string): string => {
   return source.replace(RELATIVE_TS_IMPORT, '$1$2$3$2');
 };
 
-// Adds the inline `type` modifier to type-only named imports, since the Angular CLI writes clauses
-// `verbatimModuleSyntax` rejects with TS1484 otherwise; applied per specifier, as one clause can mix kinds.
+// Angular needs per-specifier `type` modifiers because mixed clauses fail `verbatimModuleSyntax`.
 export const markTypeOnlyImports = (
   source: string,
   typeOnly: Record<string, string[]>,
@@ -56,12 +47,10 @@ export const markTypeOnlyImports = (
   });
 };
 
-// A DOM lookup immediately followed by `!`, anchored to `document.` and a string literal so a general sweep doesn't
-// strip assertions the author meant or hoist side effects out of a call expression's statement.
+// Limit the rewrite to literal `document` lookups, not arbitrary assertions or side effects.
 const DOM_LOOKUP_ASSERTION
   = /document\.(getElementById|querySelector)(<[^>]+>)?\((['"])([^'"]+)\3\)!/g;
 
-// An already-hoisted lookup, which Solid's template writes, asserted at the use site instead.
 const HOISTED_LOOKUP = new RegExp(
   [
     '^([ \\t]*)const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*',
@@ -83,20 +72,16 @@ const guardFor = (name: string, selector: string, indent: string): string => {
   ].join('\n');
 };
 
-/**
- * Replaces a template's non-null mount-lookup assertion with a guard naming the selector, so the failure explains
- * itself instead of surfacing as `Cannot read properties of null`; handles React/vanilla's inline assert and Solid's
- * already-hoisted one, leaving anything else untouched.
- */
+// Replace known template mount assertions with a selector-naming guard; leave other shapes untouched.
 export const guardMountLookups = (source: string): string => {
+  // Solid's template hoists the lookup and asserts at the use site instead, so it needs its own branch.
   const hoisted = HOISTED_LOOKUP.exec(source);
 
   if (hoisted) {
     const [line, indent = '', name = '', , argument = ''] = hoisted;
     const method = line.includes('getElementById') ? 'getElementById' : 'querySelector';
 
-    // Idempotent: the hoisted shape is what this function produces, so a re-run under `--skip-scaffold` would
-    // otherwise stack a duplicate guard.
+    // Re-runs under `--skip-scaffold` must not stack guards.
     const guarded = new RegExp(`if\\s*\\(!${name}\\b`).test(source)
       ? source
       : source.replace(line, `${line}\n\n${guardFor(name, asSelector(method, argument), indent)}`);
