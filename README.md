@@ -1,110 +1,79 @@
 # lintel
 
-A lint, type and test standard that lives in one place instead of being copied between projects.
+Lintel scaffolds a TypeScript project with a shared lint, type-check, and test standard. It starts with the
+framework's own generator, then adds the configuration and project files that usually get copied from the last
+repository.
 
 ```bash
 pnpm create @linteljs my-app
 ```
 
-Or with whichever runner you already have:
+Use the package manager you have.
+
+| Runner | Command |
+| --- | --- |
+| pnpm | `pnpm create @linteljs my-app` |
+| npm | `npm create @linteljs my-app` |
+| Yarn 2+ | `yarn create @linteljs my-app` |
+| Bun | `bun create @linteljs my-app` |
+
+The generated project has ESLint flat config, TypeScript settings, git hooks, test setup, and coding-agent
+rules. It supports React, Next.js, Vue, Svelte, Solid, Angular, React Native through Expo, and Manifest V3 web
+extensions.
+
+It starts with a working gate:
 
 ```bash
-npm create @linteljs my-app
-yarn create @linteljs my-app     # Yarn 2+; on Yarn 1 use npx
-bun create @linteljs my-app
-
-pnpm dlx @linteljs/create my-app # the long form, identical on every runner
-npx @linteljs/create my-app
-yarn dlx @linteljs/create my-app
-bunx @linteljs/create my-app
+pnpm check
 ```
 
-Scaffolds with the framework's own official generator, then layers on ESLint flat config,
-`tsconfig`, git hooks, a test setup and rules for coding agents. Eight targets: React, Next.js,
-Vue, Svelte, Solid, Angular, React Native through Expo, and Manifest V3 browser extensions.
+That runs linting, CSS linting, type-checking, coverage, and the build. Coverage thresholds are 100%.
 
-The generated project passes its own gate on day one:
-
-```bash
-pnpm check     # lint && lint:css && typecheck && test:coverage && build
-```
-
-Coverage thresholds are 100% and are not relaxed to get there.
+Yarn 1 cannot use its `create` shorthand for this package. Use `npx @linteljs/create my-app`. Long forms are
+in the [create package README](packages/create).
 
 ## Packages
 
-| Package | What it is |
+| Package | Use it for |
 | --- | --- |
-| [`@linteljs/create`](packages/create) | The CLI. Run with `pnpm create @linteljs`, never installed as a dependency. |
-| [`@linteljs/eslint-config`](packages/eslint-config) | The shareable flat-config layers. The only dependency a generated project takes on. |
-| [`@linteljs/eslint-plugin`](packages/eslint-plugin) | The custom rules the config enables. |
+| [`@linteljs/create`](packages/create) | Start a project or bring an existing one under the standard. |
+| [`@linteljs/eslint-config`](packages/eslint-config) | Compose ESLint flat-config layers. |
+| [`@linteljs/eslint-plugin`](packages/eslint-plugin) | Use the custom rules behind the config. |
 
-A generated `eslint.config.js` holds no rule logic, only which layers apply:
+## What stays shared
 
-```js
-import { defineConfig } from '@linteljs/eslint-config/define-config';
+Generated projects depend on `@linteljs/eslint-config`, rather than carrying private copies of rules. Their
+`eslint.config.js` selects layers. It does not contain rule logic. Updating the package is how a project takes
+a shared improvement.
 
-const config = await defineConfig({
-  framework: 'react',
-  typescript: true,
-  vitest: true,
-  html: true,
-  aliases: { /* ... */ },
-});
-
-export default config;
-```
-
-The layers are still exported one per subpath and can be spread by hand. What `defineConfig` owns
-is the order they compose in.
-
-Fix a rule once, publish, and every project picks it up on update. No project holds a private
-fork of the rules.
+`defineConfig` owns the layer order. You can still import each layer from its subpath and compose an array
+yourself when a project needs it.
 
 ## Existing projects
 
 ```bash
 npx @linteljs/create --skip-scaffold
+npx @linteljs/create sync
 ```
 
-Applies everything except the scaffold to a repository that already exists. It plans from the
-answers recorded in `package.json`, so re-running it cannot re-decide what the project is, and it
-refuses to run on defaults nobody chose.
-
-The `.claude/` rules and hook scripts have to be real files on disk, so they are copied rather
-than imported, and the emitted configs are regenerated whenever an option written into them
-changes. Both drift. `npx @linteljs/create sync` re-applies them, showing a diff and refusing to
-overwrite anything you have edited.
+The first command applies the standard to the current repository. The second compares Lintel-owned files with
+the current version. It prints diffs and writes nothing until `--force` is passed. It plans from
+`lintel.config.json`, so it does not guess a framework or replace recorded choices.
 
 ## Why
 
-Copying a config between projects works exactly once. After that the copies drift, and the drift
-is silent: a single missing setting can disable a rule outright while the config still looks
-right. That is not hypothetical: it is what was found in two of these repositories, and it is
-written up in [DESIGN.md](DESIGN.md) along with the decisions that are not visible in the code.
+Copied configuration drifts quietly. A missing setting can disable a rule while two config files still look
+alike. Lintel keeps shared rules in a published package and makes generated files explicit, so projects can
+update them with a reviewable diff.
 
 ## Development
 
-Requires Node 24.19+ and pnpm 11.20+. Developed and tested on macOS and Linux; Windows is
-supported through WSL, not natively, because the git hooks and the sync command's diffing are
-POSIX-shaped.
-
 ```bash
 pnpm install
-pnpm check                              # lint, typecheck, coverage, build
-pnpm --filter @linteljs/create test:e2e    # all eight targets, end to end, ~5 min
+pnpm lint
+pnpm typecheck
+pnpm test:coverage
+pnpm build
 ```
-
-The end-to-end suite runs each official scaffolder for real, generates a project, installs it,
-and asserts `pnpm check` passes with zero lint findings. It is excluded from the default test
-run because it takes minutes and hits the network.
-
-The workspace lints itself with its own layers, imported from source, so a rule change is
-judged against this repository before it reaches anyone else's.
-
-Its own coverage is gated per package in the root `vitest.config.ts`, at 100% on statements,
-branches, functions and lines for all three. A number that has to come down is a regression.
-
-## License
 
 MIT
