@@ -8,6 +8,11 @@
   plugins and top-level keys this CLI has never heard of, while the plugins answer still decides
   `enabledPlugins` and `extraKnownMarketplaces`. A real project lost `includeCoAuthoredBy`, a
   PreToolUse hook and two unrelated plugins to one sync before this.
+- `sync --force` and the repair pass wrote a generated file straight through `writeFile`, so a
+  project with a symbolic link sitting where a generated file belongs got overwritten through it,
+  silently taking out whatever the link pointed at. Only `create`'s own pipeline refused this,
+  with `O_NOFOLLOW`. `sync`, `repair` and `rewrite` now share that same write, so every path that
+  puts a generated file on disk refuses a symlink target the same way.
 - `@types/node` is `^24.13.3`, the LTS the `engines` field already requires, rather than `^26`.
 - `scripts/typecheckStaged.ts` reads its override by destructuring. Under the version above,
   `env['TYPECHECK_COMMAND']` reads as index-signature access to `dot-notation`, and the dot form it
