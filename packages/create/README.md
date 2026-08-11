@@ -122,7 +122,7 @@ selected hosts. Host-specific files point to it instead of copying the standard.
 | Path | Written for | Ownership after creation |
 | --- | --- | --- |
 | `plugins/linteljs/` | Every project | Lintel |
-| `.claude/settings.json` | Claude Code | Lintel |
+| `.claude/settings.json` | Claude Code | Shared: Lintel merges its plugin entries into what you have |
 | `.agents/plugins/marketplace.json` | Codex | Lintel |
 | `CLAUDE.md` | Claude Code | You |
 | `AGENTS.md` | Codex | You |
