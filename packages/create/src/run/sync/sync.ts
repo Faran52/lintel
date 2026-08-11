@@ -1,15 +1,10 @@
-import {
-  chmod,
-  mkdir,
-  rm,
-  rmdir,
-  writeFile,
-} from 'node:fs/promises';
+import { rm, rmdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { buildArtifacts, GENERATED_AGENT_TARGETS } from '../../artifacts';
 import { SETUP_TESTS_CANDIDATES } from '../../artifacts/banned-patterns/checkerArtifact';
 import { git } from '../git/git';
+import { applyArtifact } from '../project-files/projectFiles';
 import { contentOf } from '../shipped-assets/shippedAssets';
 import {
   entryExists,
@@ -159,22 +154,9 @@ export const applySync = async (
       continue;
     }
 
-    const path = join(cwd, artifact.target);
-
-    // A preserved file holds the project's own edits beside the shipped one, so a missing copy is restored and an
-    // existing one is left: `--force` is a bulk yes, not a licence to lose it.
-    if (artifact.preserve === true && await entryExists(path)) {
-      continue;
+    if (await applyArtifact(cwd, artifact)) {
+      written.push(artifact.target);
     }
-
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, await contentOf(artifact.content, await readIfPresent(path)), 'utf8');
-
-    if (artifact.executable === true) {
-      await chmod(path, 0o755);
-    }
-
-    written.push(artifact.target);
   }
 
   for (const target of GENERATED_AGENT_TARGETS) {

@@ -4,6 +4,7 @@ import {
   readFile,
   rm,
   stat,
+  symlink,
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -180,6 +181,17 @@ describe('applySync', () => {
     const written = await readFile(join(cwd, 'eslint.config.js'), 'utf8');
 
     expect(written).toContain('defineConfig');
+  });
+
+  it('refuses to write a generated artifact through a symbolic link', async () => {
+    const external = join(cwd, 'external-eslint.config.js');
+
+    await writeFile(external, '// external config\n', 'utf8');
+    await symlink(external, join(cwd, 'eslint.config.js'));
+
+    await expect(applySync(cwd, DEFAULT_ANSWERS, ['eslint.config.js']))
+      .rejects.toThrow('Refusing to write eslint.config.js: target is a symbolic link');
+    await expect(readFile(external, 'utf8')).resolves.toBe('// external config\n');
   });
 
   it('makes an executable artifact executable on disk', async () => {

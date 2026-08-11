@@ -1,11 +1,5 @@
 import { spawn } from 'node:child_process';
-import { constants } from 'node:fs';
-import {
-  chmod,
-  mkdir,
-  open,
-  readFile,
-} from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { env } from 'node:process';
 
@@ -26,11 +20,11 @@ import {
 } from '../../model/targets';
 import { nextStep, runFixPass } from '../fix-pass/fixPass';
 import { git } from '../git/git';
+import { applyArtifact, writeProjectFile } from '../project-files/projectFiles';
 import { repairScaffoldedOutput } from '../repair/repair';
 import { rewriteScaffoldedSource } from '../rewrite/rewrite';
-import { ASSETS_ROOT, contentOf } from '../shipped-assets/shippedAssets';
+import { ASSETS_ROOT } from '../shipped-assets/shippedAssets';
 import {
-  entryExists,
   exists,
   firstPresent,
   readIfPresent,
@@ -99,31 +93,7 @@ export const scaffoldCommand = (
 };
 
 const write = async (options: PipelineOptions, relative: string, text: string): Promise<void> => {
-  const path = join(options.cwd, relative);
-
-  await mkdir(dirname(path), { recursive: true });
-
-  try {
-    const file = await open(
-      path,
-      constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW,
-      0o666,
-    );
-
-    try {
-      await file.writeFile(text, 'utf8');
-    }
-    finally {
-      await file.close();
-    }
-  }
-  catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ELOOP') {
-      throw new Error(`Refusing to write ${relative}: target is a symbolic link`);
-    }
-
-    throw error;
-  }
+  await writeProjectFile(options.cwd, relative, text);
 
   options.onWrite?.(relative);
 };
@@ -139,20 +109,8 @@ const writeArtifacts = async (
       continue;
     }
 
-    if (artifact.preserve === true && await entryExists(join(options.cwd, artifact.target))) {
-      continue;
-    }
-
-    // Only a merge needs the current file, so only a merge pays to read it.
-    const current = 'merge' in artifact.content
-      ? await readIfPresent(join(options.cwd, artifact.target))
-      : null;
-
-    await write(options, artifact.target, await contentOf(artifact.content, current));
-
-    if (artifact.executable === true) {
-      // Husky and Claude Code invoke these directly, and npm does not preserve the mode bit for every consumer.
-      await chmod(join(options.cwd, artifact.target), 0o755);
+    if (await applyArtifact(options.cwd, artifact)) {
+      options.onWrite?.(artifact.target);
     }
   }
 };
