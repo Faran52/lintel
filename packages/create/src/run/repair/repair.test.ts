@@ -3,6 +3,7 @@ import {
   mkdtemp,
   readFile,
   rm,
+  symlink,
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -90,6 +91,19 @@ describe('starter fixes', () => {
 
     expect(await readFile(join(cwd, 'src/app/_layout.tsx'), 'utf8'))
       .toBe('void SplashScreen.preventAutoHideAsync();\n');
+  });
+
+  it('refuses to apply a starter fix through a symbolic link', async () => {
+    const external = join(cwd, 'external-layout.tsx');
+
+    await mkdir(join(cwd, 'src/app'), { recursive: true });
+    await writeFile(external, 'SplashScreen.preventAutoHideAsync();\n', 'utf8');
+    await symlink(external, join(cwd, 'src/app/_layout.tsx'));
+
+    await expect(repairScaffoldedOutput(cwd, 'react-native'))
+      .rejects.toThrow('Refusing to write src/app/_layout.tsx: target is a symbolic link');
+    await expect(readFile(external, 'utf8'))
+      .resolves.toBe('SplashScreen.preventAutoHideAsync();\n');
   });
 
   // `onPress` wants void back, so an `async` handler returned a promise nothing awaited.

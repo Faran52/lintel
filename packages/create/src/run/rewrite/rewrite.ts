@@ -1,11 +1,8 @@
-import {
-  readdir,
-  readFile,
-  writeFile,
-} from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 
 import { targetFor } from '../../model/targets';
+import { writeProjectFile } from '../project-files/projectFiles';
 import { isAbsence } from '../utils/fsUtils';
 
 import type { TargetId } from '../../model/answers/answers';
@@ -172,8 +169,10 @@ export const rewriteScaffoldedSource = async (
     const after = isMountEntry(path, root) ? guardMountLookups(typed) : typed;
 
     if (after !== before) {
-      await writeFile(path, after, 'utf8');
-      onWrite?.(path.slice(cwd.length + 1));
+      const target = path.slice(cwd.length + 1);
+
+      await writeProjectFile(cwd, target, after);
+      onWrite?.(target);
     }
   }
 };

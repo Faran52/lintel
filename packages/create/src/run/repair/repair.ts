@@ -1,17 +1,12 @@
 import {
-  mkdir,
   readFile,
   rename,
   rm,
-  writeFile,
 } from 'node:fs/promises';
-import {
-  basename,
-  dirname,
-  join,
-} from 'node:path';
+import { basename, join } from 'node:path';
 
 import { targetFor } from '../../model/targets';
+import { writeProjectFile } from '../project-files/projectFiles';
 import { SOURCE_ROOT, sourceFiles } from '../rewrite/rewrite';
 import { exists } from '../utils/fsUtils';
 
@@ -43,10 +38,7 @@ const applyStarterFixes = async (
     const after = transform === undefined ? before : transform(before);
 
     if (moveTo !== undefined) {
-      const destination = join(cwd, moveTo);
-
-      await mkdir(dirname(destination), { recursive: true });
-      await writeFile(destination, after, 'utf8');
+      await writeProjectFile(cwd, moveTo, after);
       await rm(full);
       onWrite?.(moveTo);
       continue;
@@ -57,7 +49,7 @@ const applyStarterFixes = async (
       continue;
     }
 
-    await writeFile(full, after, 'utf8');
+    await writeProjectFile(cwd, path, after);
     onWrite?.(path);
   }
 };
@@ -119,8 +111,10 @@ const renameStarterFiles = async (
     const after = repointSpecifiers(before, edits);
 
     if (after !== before) {
-      await writeFile(path, after, 'utf8');
-      onWrite?.(path.slice(cwd.length + 1));
+      const target = path.slice(cwd.length + 1);
+
+      await writeProjectFile(cwd, target, after);
+      onWrite?.(target);
     }
   }
 };
