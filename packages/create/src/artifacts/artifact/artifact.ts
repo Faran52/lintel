@@ -15,7 +15,16 @@ export interface CopiedAssets {
   transform?: (source: string) => string;
 }
 
-export type ArtifactContent = CopiedAssets | EmittedText;
+/**
+ * A file this CLI owns some of and the project owns the rest of. `merge` receives whatever is on
+ * disk, or `null` on a first write, and answers the whole file. Neither `emitted` nor `preserve`
+ * fits: emitting drops the project's half, preserving freezes ours at whatever birth wrote.
+ */
+export interface MergedText {
+  merge: (current: string | null) => string;
+}
+
+export type ArtifactContent = CopiedAssets | EmittedText | MergedText;
 
 export interface Artifact {
   // The stage that writes it, and the stage `--skip` declines it with.
@@ -34,4 +43,12 @@ export const emitted = (stage: Stage, target: string, text: string): Artifact =>
 // A shipped file that lands unchanged, from one source or several concatenated. Every one is stage 4, `standard`.
 export const copied = (target: string, ...sources: string[]): Artifact => {
   return { stage: 'standard', target, content: { sources } };
+};
+
+export const merged = (
+  stage: Stage,
+  target: string,
+  merge: (current: string | null) => string,
+): Artifact => {
+  return { stage, target, content: { merge } };
 };

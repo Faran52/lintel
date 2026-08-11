@@ -18,6 +18,7 @@ import {
 import {
   entryExists,
   exists,
+  firstPresent,
   isAbsence,
   readIfPresent,
 } from './fsUtils';
@@ -88,5 +89,25 @@ describe('readIfPresent', () => {
   // read; a directory at the path stays an error.
   it('rethrows a failure that is not absence', async () => {
     await expect(readIfPresent(cwd)).rejects.toThrow();
+  });
+});
+
+describe('firstPresent', () => {
+  const CANDIDATES = ['a.tsx', 'a.ts'];
+
+  it('answers undefined when none of them is there', async () => {
+    expect(await firstPresent(cwd, CANDIDATES)).toBeUndefined();
+  });
+
+  // Order is the caller's preference, not the filesystem's: whichever comes first wins when both
+  // exist, so a project holding the older spelling keeps it rather than gaining a second file.
+  it('answers the first candidate that exists, in the order given', async () => {
+    await writeFile(join(cwd, 'a.ts'), '', 'utf8');
+
+    expect(await firstPresent(cwd, CANDIDATES)).toBe('a.ts');
+
+    await writeFile(join(cwd, 'a.tsx'), '', 'utf8');
+
+    expect(await firstPresent(cwd, CANDIDATES)).toBe('a.tsx');
   });
 });

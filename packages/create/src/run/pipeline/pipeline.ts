@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path';
 import { env } from 'node:process';
 
 import { type Artifact, buildArtifacts } from '../../artifacts';
+import { SETUP_TESTS_CANDIDATES } from '../../artifacts/banned-patterns/checkerArtifact';
 import { mergeGitignore } from '../../artifacts/gitignore/mergeGitignore';
 import { emitPackageJson, parsePackageJson } from '../../artifacts/package-json/emitPackageJson';
 import { mergePnpmWorkspace } from '../../artifacts/pnpm-workspace/mergePnpmWorkspace';
@@ -31,6 +32,7 @@ import { ASSETS_ROOT, contentOf } from '../shipped-assets/shippedAssets';
 import {
   entryExists,
   exists,
+  firstPresent,
   readIfPresent,
 } from '../utils/fsUtils';
 
@@ -141,7 +143,12 @@ const writeArtifacts = async (
       continue;
     }
 
-    await write(options, artifact.target, await contentOf(artifact.content));
+    // Only a merge needs the current file, so only a merge pays to read it.
+    const current = 'merge' in artifact.content
+      ? await readIfPresent(join(options.cwd, artifact.target))
+      : null;
+
+    await write(options, artifact.target, await contentOf(artifact.content, current));
 
     if (artifact.executable === true) {
       // Husky and Claude Code invoke these directly, and npm does not preserve the mode bit for every consumer.
@@ -312,7 +319,8 @@ const STAGE_RUNNERS: Record<Stage, StageRunner> = {
 };
 
 export const runPipeline = async (options: PipelineOptions): Promise<void> => {
-  const artifacts = buildArtifacts(options.answers);
+  const existingSetup = await firstPresent(options.cwd, SETUP_TESTS_CANDIDATES);
+  const artifacts = buildArtifacts(options.answers, existingSetup);
 
   for (const stage of STAGES) {
     // Skipped with lint: `--skip lint` means somebody else's rules, and fixing against those is an unasked-for edit.

@@ -262,18 +262,18 @@ describe('selected agent setup', () => {
     await generate(answers);
     await writeFile(join(cwd, 'CLAUDE.md'), '# project Claude instructions\n', 'utf8');
     await writeFile(join(cwd, 'AGENTS.md'), '# project Codex instructions\n', 'utf8');
-    await writeFile(join(cwd, '__mocks__/setupTests.ts'), '// project test setup\n', 'utf8');
+    await writeFile(join(cwd, '__mocks__/setupTests.tsx'), '// project test setup\n', 'utf8');
 
     const written = await generate(answers);
 
     expect(written).not.toContain('CLAUDE.md');
     expect(written).not.toContain('AGENTS.md');
-    expect(written).not.toContain('__mocks__/setupTests.ts');
+    expect(written).not.toContain('__mocks__/setupTests.tsx');
     await expect(readFile(join(cwd, 'CLAUDE.md'), 'utf8'))
       .resolves.toBe('# project Claude instructions\n');
     await expect(readFile(join(cwd, 'AGENTS.md'), 'utf8'))
       .resolves.toBe('# project Codex instructions\n');
-    await expect(readFile(join(cwd, '__mocks__/setupTests.ts'), 'utf8'))
+    await expect(readFile(join(cwd, '__mocks__/setupTests.tsx'), 'utf8'))
       .resolves.toBe('// project test setup\n');
   });
 

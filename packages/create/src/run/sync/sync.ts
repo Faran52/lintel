@@ -9,9 +9,14 @@ import {
 import { dirname, join } from 'node:path';
 
 import { buildArtifacts, GENERATED_AGENT_TARGETS } from '../../artifacts';
+import { SETUP_TESTS_CANDIDATES } from '../../artifacts/banned-patterns/checkerArtifact';
 import { git } from '../git/git';
 import { contentOf } from '../shipped-assets/shippedAssets';
-import { entryExists } from '../utils/fsUtils';
+import {
+  entryExists,
+  firstPresent,
+  readIfPresent,
+} from '../utils/fsUtils';
 
 import type { Answers } from '../../model/answers/answers';
 
@@ -67,7 +72,9 @@ export const planSync = async (cwd: string, answers: Answers): Promise<SyncPlan>
   const entries: SyncEntry[] = [];
   const expected = new Set<string>();
 
-  for (const artifact of buildArtifacts(answers)) {
+  const existingSetup = await firstPresent(cwd, SETUP_TESTS_CANDIDATES);
+
+  for (const artifact of buildArtifacts(answers, existingSetup)) {
     expected.add(artifact.target);
 
     const path = join(cwd, artifact.target);
@@ -91,7 +98,7 @@ export const planSync = async (cwd: string, answers: Answers): Promise<SyncPlan>
       continue;
     }
 
-    const shipped = await contentOf(artifact.content);
+    const shipped = await contentOf(artifact.content, current);
 
     entries.push(
       current === shipped
@@ -151,7 +158,9 @@ export const applySync = async (
   const removed: string[] = [];
   const expected = new Set<string>();
 
-  for (const artifact of buildArtifacts(answers)) {
+  const existingSetup = await firstPresent(cwd, SETUP_TESTS_CANDIDATES);
+
+  for (const artifact of buildArtifacts(answers, existingSetup)) {
     expected.add(artifact.target);
 
     if (!targets.includes(artifact.target)) {
@@ -167,7 +176,7 @@ export const applySync = async (
     }
 
     await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, await contentOf(artifact.content), 'utf8');
+    await writeFile(path, await contentOf(artifact.content, await readIfPresent(path)), 'utf8');
 
     if (artifact.executable === true) {
       await chmod(path, 0o755);

@@ -10,7 +10,7 @@ import {
   copied,
   emitted,
 } from '../artifact/artifact';
-import { checkerArtifact, SETUP_TESTS_PATH } from '../banned-patterns/checkerArtifact';
+import { checkerArtifact, setupTestsPath } from '../banned-patterns/checkerArtifact';
 import { emitEslintConfig } from '../eslint-config/emitEslintConfig';
 import { emitStylelintConfig } from '../stylelint-config/emitStylelintConfig';
 import { emitTsconfig } from '../tsconfig/emitTsconfig';
@@ -19,8 +19,7 @@ import { emitVitestConfig } from '../vitest-config/emitVitestConfig';
 
 import type { TargetRecord } from '../../model/targets/record';
 
-// The target's own setup, then the fragments the answers add. Every fragment is import-free, so it can follow a setup
-// that imports: the other way round, Angular's imports would land after its statements and fail `import-x/first`.
+// Append import-free fragments after the target setup, so Angular imports remain first.
 const setupSources = (answers: Answers, target: TargetRecord): string[] => {
   return [
     target.testSetup ?? 'mocks/setupTests.ts',
@@ -29,12 +28,12 @@ const setupSources = (answers: Answers, target: TargetRecord): string[] => {
   ];
 };
 
-// package.json, .gitignore, pnpm-workspace.yaml (merges), README.md (template fills), and starter tests (birth-only)
-// are deliberately absent from this list. Agent adapters are artifacts because selection and sync share them.
-export const buildArtifacts = (answers: Answers): Artifact[] => {
+// Excludes merges, template fills and birth-only files. `existingSetup` preserves a project's setup spelling.
+export const buildArtifacts = (answers: Answers, existingSetup?: string): Artifact[] => {
   const target = targetFor(answers.target);
+  const setup = setupTestsPath(answers, existingSetup);
   const viteConfig = emitViteConfig(answers);
-  const vitestConfig = emitVitestConfig(answers);
+  const vitestConfig = emitVitestConfig(answers, setup);
 
   const artifacts: Artifact[] = [
     emitted('lint', 'eslint.config.js', emitEslintConfig(answers)),
@@ -49,8 +48,7 @@ export const buildArtifacts = (answers: Answers): Artifact[] => {
     copied('scripts/typecheckStaged.ts', 'scripts/typecheckStaged.ts'),
   ];
 
-  // Ambient and global type vocabulary for the relaxed floor; nothing imports it, and a strict project narrows with a
-  // guard instead.
+  // Relaxed projects get ambient type vocabulary; strict projects narrow with guards.
   if (answers.typeSafety === 'relaxed') {
     artifacts.push(copied('src/typings/customTypes.d.ts', 'typings/customTypes.d.ts'));
   }
@@ -64,9 +62,8 @@ export const buildArtifacts = (answers: Answers): Artifact[] => {
   }
 
   if (hasTests(answers)) {
-    // vitest.config.ts names this in setupFiles; without it, every run fails to find the module before collecting a
-    // single test. `preserve`: the project adds its own mocks here, and a sync must not delete them.
-    artifacts.push({ ...copied(SETUP_TESTS_PATH, ...setupSources(answers, target)), preserve: true });
+    // Preserve project mocks in the setup file Vitest loads before collecting tests.
+    artifacts.push({ ...copied(setup, ...setupSources(answers, target)), preserve: true });
   }
 
   return artifacts;

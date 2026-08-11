@@ -2,12 +2,14 @@ import {
   type Artifact,
   copied,
   emitted,
+  merged,
 } from '../artifact/artifact';
 import { referenceArtifacts } from '../lintel-plugin/referenceArtifacts';
 
 import { emitAgentAdapter } from './emitAgentAdapter';
 import { emitClaudeSettings } from './emitClaudeSettings';
 import { emitCodexMarketplace } from './emitCodexMarketplace';
+import { mergeClaudeSettings } from './mergeClaudeSettings';
 
 import type { Answers } from '../../model/answers/answers';
 
@@ -76,7 +78,9 @@ export const agentArtifacts = (answers: Answers): Artifact[] => {
   if (answers.agents.includes('claude-code')) {
     artifacts.push(
       adapter('CLAUDE.md', answers),
-      emitted('standard', '.claude/settings.json', emitClaudeSettings(answers.plugins)),
+      merged('standard', '.claude/settings.json', (current) => {
+        return mergeClaudeSettings(emitClaudeSettings(answers.plugins), current);
+      }),
       copied(
         'plugins/linteljs/.claude-plugin/plugin.json',
         'linteljs-plugin/.claude-plugin/plugin.json',

@@ -41,7 +41,7 @@ export const VERSIONS: Record<string, string> = {
   '@testing-library/svelte': '^5.4.2',
   '@types/babel__core': '^7.20.5',
   '@types/chrome': '^0.2.5',
-  '@types/node': '^26.1.2',
+  '@types/node': '^24.13.3',
   '@vitejs/plugin-react': '^6.0.5',
   '@vitest/coverage-v8': '^4.1.10',
   '@vitest/eslint-plugin': '^1.6.26',
@@ -51,7 +51,7 @@ export const VERSIONS: Record<string, string> = {
   'eslint': '^10.8.0',
   'eslint-config-next': '^16.3.0',
   // The sibling package: tracks its own version, and versions.test.ts fails the moment they diverge.
-  '@linteljs/eslint-config': '^1.1.3',
+  '@linteljs/eslint-config': '^1.1.4',
   'eslint-plugin-react-hooks': '^7.1.1',
   'eslint-plugin-better-tailwindcss': '^4.7.0',
   'eslint-plugin-solid': '^0.14.5',

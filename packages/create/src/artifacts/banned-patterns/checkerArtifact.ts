@@ -4,8 +4,24 @@ import { type Artifact } from '../artifact/artifact';
 
 import type { Answers } from '../../model/answers/answers';
 
-// The test setup, whose path the vitest artifact and the skip list below have to agree on.
-export const SETUP_TESTS_PATH = '__mocks__/setupTests.ts';
+/**
+ * The test setup, whose path the vitest artifact and the skip list below have to agree on. `.tsx`
+ * on the React family, where a setup that renders anything needs JSX; `.ts` elsewhere, since Vue,
+ * Svelte and Angular keep markup out of it. Read off the target's own `jsx` rather than a list of
+ * ids: Solid and Vue set `preserve` and are deliberately not included.
+ */
+// Both spellings, newest first: `run/` asks which one a project already holds before writing.
+export const SETUP_TESTS_CANDIDATES = ['__mocks__/setupTests.tsx', '__mocks__/setupTests.ts'];
+
+export const setupTestsPath = (answers: Answers, existing?: string): string => {
+  if (existing !== undefined) {
+    return existing;
+  }
+
+  return targetFor(answers.target).tsconfig.jsx === 'react-jsx'
+    ? '__mocks__/setupTests.tsx'
+    : '__mocks__/setupTests.ts';
+};
 
 // Throws rather than no-op: a silent miss on a drifted anchor would ship the strict floor to a relaxed project.
 const replaceAnchored = (source: string, anchor: string, replacement: string): string => {
@@ -37,7 +53,7 @@ const starterSkips = (answers: Answers): string[] => {
   }
 
   return [
-    SETUP_TESTS_PATH,
+    setupTestsPath(answers),
     ...tests.map((test) => {
       return test.target;
     }),

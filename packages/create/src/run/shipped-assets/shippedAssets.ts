@@ -20,7 +20,15 @@ const assetsRootFrom = (start: string): string => {
 export const ASSETS_ROOT = assetsRootFrom(dirname(fileURLToPath(import.meta.url)));
 
 // `pipeline` writes this text and `sync` compares against it, so the two can never be composed differently.
-export const contentOf = async (content: ArtifactContent): Promise<string> => {
+// `current` is what is on disk, or null when nothing is: only a merge reads it.
+export const contentOf = async (
+  content: ArtifactContent,
+  current: string | null = null,
+): Promise<string> => {
+  if ('merge' in content) {
+    return content.merge(current);
+  }
+
   if ('text' in content) {
     return content.text;
   }

@@ -17,8 +17,9 @@ const isExecSyncError = (value: unknown): value is ExecSyncError => {
   return value instanceof Error && 'stdout' in value && 'stderr' in value;
 };
 
-// Overridable so a Vue or Svelte project can point at vue-tsc / svelte-check instead.
-const TYPECHECK_COMMAND = env['TYPECHECK_COMMAND'] ?? 'npm run typecheck';
+// Overridable for vue-tsc or svelte-check; destructuring also satisfies the tsconfig's index-signature rule.
+const { TYPECHECK_COMMAND } = env;
+const typecheckCommand = TYPECHECK_COMMAND ?? 'npm run typecheck';
 const ANSI_ESCAPE_GLOBAL = /\u001b\[[0-9;]*m/g;
 
 const normalizePath = (filePath: string): string => {
@@ -36,7 +37,7 @@ if (stagedFiles.length === 0) {
 let output = '';
 
 try {
-  execSync(TYPECHECK_COMMAND, {
+  execSync(typecheckCommand, {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
   });

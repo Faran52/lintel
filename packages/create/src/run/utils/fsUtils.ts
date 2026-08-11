@@ -3,6 +3,7 @@ import {
   lstat,
   readFile,
 } from 'node:fs/promises';
+import { join } from 'node:path';
 
 // True only for absence. A permission error, or a directory where a file should be, stays an error.
 export const isAbsence = (error: unknown): error is Error & { code: 'ENOENT' } => {
@@ -50,4 +51,21 @@ export const readIfPresent = async (path: string): Promise<string | null> => {
 
     throw error;
   }
+};
+
+/**
+ * The first of `candidates` present under `cwd`, relative as given, or undefined. A project that
+ * already holds one spelling of a file keeps it rather than gaining a second beside it.
+ */
+export const firstPresent = async (
+  cwd: string,
+  candidates: string[],
+): Promise<string | undefined> => {
+  const found = await Promise.all(candidates.map(async (candidate) => {
+    return await entryExists(join(cwd, candidate)) ? candidate : undefined;
+  }));
+
+  return found.find((candidate) => {
+    return candidate !== undefined;
+  });
 };

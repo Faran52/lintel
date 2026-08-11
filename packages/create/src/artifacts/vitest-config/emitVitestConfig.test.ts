@@ -5,6 +5,7 @@ import {
 } from 'vitest';
 
 import { DEFAULT_ANSWERS } from '../../model/answers/answers';
+import { setupTestsPath } from '../banned-patterns/checkerArtifact';
 
 import { emitVitestConfig } from './emitVitestConfig';
 
@@ -16,7 +17,9 @@ interface AnswerOverrides {
 }
 
 const configFor = (overrides: AnswerOverrides = {}): string | null => {
-  return emitVitestConfig({ ...DEFAULT_ANSWERS, ...overrides });
+  const answers = { ...DEFAULT_ANSWERS, ...overrides };
+
+  return emitVitestConfig(answers, setupTestsPath(answers));
 };
 
 describe('emitVitestConfig', () => {
@@ -40,8 +43,8 @@ describe('emitVitestConfig', () => {
   });
 
   it('names the setup file the artifact list writes', () => {
-    expect(configFor()).toContain("setupFiles: ['./__mocks__/setupTests.ts']");
-    expect(configFor({ target: 'react-native' })).toContain("setupFiles: ['./__mocks__/setupTests.ts']");
+    expect(configFor()).toContain("setupFiles: ['./__mocks__/setupTests.tsx']");
+    expect(configFor({ target: 'react-native' })).toContain("setupFiles: ['./__mocks__/setupTests.tsx']");
   });
 
   it('covers the single-file component extension where the target has one', () => {

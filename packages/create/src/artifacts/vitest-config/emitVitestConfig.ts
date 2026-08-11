@@ -64,11 +64,11 @@ ${indent}  thresholds: { lines: 100, branches: 100, functions: 100, statements: 
 ${indent}},`;
 };
 
-const testBlock = (include: string, exclude: string[]): string => {
+const testBlock = (include: string, exclude: string[], setup: string): string => {
   return `  test: {
     globals: true,
     environment: 'happy-dom',
-    setupFiles: ['./__mocks__/setupTests.ts'],
+    setupFiles: ['./${setup}'],
 ${coverageBlock(include, exclude, '    ')}
   },`;
 };
@@ -83,6 +83,7 @@ const platformProjects = (
   platforms: TestPlatform[],
   include: string,
   exclude: string[],
+  setup: string,
 ): string => {
   // One argument per line: the extension lists run past `max-len` on a single one.
   const entries = platforms.map((platform) => {
@@ -110,7 +111,7 @@ const platform = (name: string, extensions: string[], include: string[], exclude
       exclude,
       globals: true,
       environment: 'node',
-      setupFiles: ['./__mocks__/setupTests.ts'],
+      setupFiles: ['./${setup}'],
     },
   };
 };
@@ -126,7 +127,7 @@ ${coverageBlock(include, exclude, '    ')}
 `;
 };
 
-export const emitVitestConfig = (answers: Answers): string | null => {
+export const emitVitestConfig = (answers: Answers, setup: string): string | null => {
   if (answers.testing !== 'vitest') {
     return null;
   }
@@ -136,10 +137,10 @@ export const emitVitestConfig = (answers: Answers): string | null => {
   const exclude = [...SHARED_COVERAGE_EXCLUDE, ...target.coverageExclude ?? []];
 
   if (target.testPlatforms !== undefined) {
-    return platformProjects(target.testPlatforms, include, exclude);
+    return platformProjects(target.testPlatforms, include, exclude, setup);
   }
 
-  const block = testBlock(include, exclude);
+  const block = testBlock(include, exclude, setup);
   const conditions = target.testConditions === undefined
     ? ''
     : `  resolve: { conditions: [${quoted(target.testConditions)}] },\n`;

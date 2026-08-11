@@ -30,6 +30,7 @@ import {
 import { targetFor } from '../../model/targets';
 import { ASSETS_ROOT, contentOf } from '../../run/shipped-assets/shippedAssets';
 import { type Artifact } from '../artifact/artifact';
+import { setupTestsPath } from '../banned-patterns/checkerArtifact';
 
 import { buildArtifacts } from './buildArtifacts';
 
@@ -168,11 +169,12 @@ describe('buildArtifacts', () => {
       const artifacts = buildArtifacts(answersFor({ target, libraries: ['zod'] }));
 
       await Promise.all(artifacts.flatMap((artifact) => {
-        return 'text' in artifact.content
-          ? []
-          : artifact.content.sources.map((source) => {
+        // Only a copied artifact names files on disk; emitted and merged both build their text.
+        return 'sources' in artifact.content
+          ? artifact.content.sources.map((source) => {
               return access(join(ASSETS_ROOT, source), constants.R_OK);
-            });
+            })
+          : [];
       }));
 
       expect(artifacts.length).toBeGreaterThan(0);
@@ -289,8 +291,9 @@ describe('the emitted checker against the emitted starter code', () => {
 describe('the shipped test setup', () => {
   const FRAGMENTS = ['mocks/setupTests.router.ts', 'mocks/setupTests.tanstackQuery.ts'];
 
+  // `.tsx` on the React family, `.ts` elsewhere, so the lookup follows the same rule the emitter does.
   const setupFor = async (overrides: AnswerOverrides): Promise<string> => {
-    return await textFor(overrides, '__mocks__/setupTests.ts');
+    return await textFor(overrides, setupTestsPath({ ...DEFAULT_ANSWERS, ...overrides }));
   };
 
   it('ships the router mocks to every target with a binding they could stand in for', async () => {
@@ -342,12 +345,35 @@ describe('the shipped test setup', () => {
   });
 
   it('ships no setup, and so no fragment, to a project that declined tests', () => {
-    expect(targetsOf({ testing: 'none', libraries: ['tanstack-query'] })).not.toContain('__mocks__/setupTests.ts');
+    expect(targetsOf({ testing: 'none', libraries: ['tanstack-query'] })).not.toContain('__mocks__/setupTests.tsx');
   });
 
   // The project adds its own mocks to this file, so a sync must install it when missing and never overwrite it.
+  /**
+   * A React project generated before the setup file became `.tsx` still holds `.ts`, and it is
+   * preserved, so the emitted vitest config has to point at the file that is actually there rather
+   * than at the one this version would write.
+   */
+  it('keeps the setup spelling a project already has, config included', () => {
+    const artifacts = buildArtifacts(answersFor({ target: 'react' }), '__mocks__/setupTests.ts');
+
+    const targets = artifacts.map((artifact) => {
+      return artifact.target;
+    });
+
+    expect(targets).toContain('__mocks__/setupTests.ts');
+    expect(targets).not.toContain('__mocks__/setupTests.tsx');
+
+    const vitest = artifacts.find((artifact) => {
+      return artifact.target === 'vitest.config.ts';
+    });
+
+    expect(vitest?.content).toHaveProperty('text');
+    expect(JSON.stringify(vitest?.content)).toContain('./__mocks__/setupTests.ts');
+  });
+
   it('preserves the setup once the project owns it', () => {
-    expect(artifactFor({}, '__mocks__/setupTests.ts')?.preserve).toBe(true);
+    expect(artifactFor({}, '__mocks__/setupTests.tsx')?.preserve).toBe(true);
   });
 });
 
