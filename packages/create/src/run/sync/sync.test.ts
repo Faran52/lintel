@@ -1,4 +1,5 @@
 import {
+  mkdir,
   mkdtemp,
   readFile,
   rm,
@@ -112,6 +113,14 @@ describe('planSync', () => {
     await rm(join(cwd, 'CLAUDE.md'));
 
     expect(await statusOf(DEFAULT_ANSWERS, 'CLAUDE.md')).toBe('missing');
+  });
+
+  // A bare catch that read any read failure as absence would report this as "missing" and invite a
+  // `--force` that then fails writing over a directory, hiding the real problem behind the wrong status.
+  it('rejects rather than reporting missing when a target cannot be read for a reason other than absence', async () => {
+    await mkdir(join(cwd, 'eslint.config.js'));
+
+    await expect(planSync(cwd, DEFAULT_ANSWERS)).rejects.toThrow();
   });
 
   it('marks a generated agent file obsolete once the answers stop selecting its host', async () => {

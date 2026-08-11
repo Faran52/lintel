@@ -613,6 +613,58 @@ describe('pnpm-workspace.yaml', () => {
   });
 });
 
+describe('.claude/settings.json', () => {
+  interface MergedSettings {
+    includeCoAuthoredBy?: boolean;
+    hooks?: unknown;
+    enabledPlugins: Record<string, boolean>;
+  }
+
+  const isMergedSettings = (value: unknown): value is MergedSettings => {
+    return typeof value === 'object' && value !== null && 'enabledPlugins' in value;
+  };
+
+  const settingsAt = async (path: string): Promise<MergedSettings> => {
+    const value: unknown = JSON.parse(await readFile(path, 'utf8'));
+
+    if (!isMergedSettings(value)) {
+      throw new Error('.claude/settings.json is not an object with enabledPlugins');
+    }
+
+    return value;
+  };
+
+  it('keeps the top-level keys and hooks a running project already holds', async () => {
+    await mkdir(join(cwd, '.claude'), { recursive: true });
+    await writeFile(
+      join(cwd, '.claude/settings.json'),
+      `${JSON.stringify({
+        includeCoAuthoredBy: false,
+        hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'guard.sh' }] }] },
+        enabledPlugins: { 'caveman@caveman': true },
+      }, null, 2)}\n`,
+      'utf8',
+    );
+
+    await generate({ agents: ['claude-code'] });
+
+    const merged = await settingsAt(join(cwd, '.claude/settings.json'));
+
+    expect(merged.includeCoAuthoredBy).toBe(false);
+    expect(merged.hooks).toBeDefined();
+    expect(merged.enabledPlugins['caveman@caveman']).toBe(true);
+    expect(merged.enabledPlugins['linteljs@linteljs']).toBe(true);
+  });
+
+  it('writes the emitted file unchanged when there is nothing on disk yet', async () => {
+    await generate({ agents: ['claude-code'] });
+
+    const written = await settingsAt(join(cwd, '.claude/settings.json'));
+
+    expect(written.enabledPlugins['linteljs@linteljs']).toBe(true);
+  });
+});
+
 const scaffoldFor = (overrides: AnswerOverrides): string[] => {
   const answers = answersFor(overrides);
 

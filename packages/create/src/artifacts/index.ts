@@ -7,6 +7,7 @@ export {
   type ArtifactContent,
   type CopiedAssets,
   type EmittedText,
+  type MergedText,
 } from './artifact/artifact';
 export { buildArtifacts } from './build-artifacts/buildArtifacts';
 export { referenceArtifacts } from './lintel-plugin/referenceArtifacts';
