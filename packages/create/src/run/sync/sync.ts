@@ -1,7 +1,6 @@
 import {
   chmod,
   mkdir,
-  readFile,
   rm,
   rmdir,
   writeFile,
@@ -78,14 +77,7 @@ export const planSync = async (cwd: string, answers: Answers): Promise<SyncPlan>
     expected.add(artifact.target);
 
     const path = join(cwd, artifact.target);
-    let current: string | null = null;
-
-    try {
-      current = await readFile(path, 'utf8');
-    }
-    catch {
-      current = null;
-    }
+    const current = await readIfPresent(path);
 
     if (current === null) {
       entries.push({ target: artifact.target, status: 'missing', diff: '' });
