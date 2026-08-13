@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## 1.3.2
+
+### Changed
+
+- Three floors in `versions.ts` moved to what this workspace now installs: `@commitlint/cli` and
+  `@commitlint/config-conventional` to `^21.2.2`, and `@eslint-react/eslint-plugin` to `^5.18.6`.
+  The carets already admitted all three, so no generated project resolved differently; what changes
+  is that the emitted `package.json` names the version the gate was actually run against. Nothing
+  else in the table is behind: every other entry is either inside its own caret or held back on
+  purpose, which is `typescript` at `~6.0.3` under the `typescript-eslint` peer ceiling,
+  `@ngrx/signals` on the rc that peers Angular 22, and `@types/node` tracking the Node major in
+  `engines`.
 
 ### Fixed
 

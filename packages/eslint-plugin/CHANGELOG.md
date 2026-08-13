@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2
+
+No change to the rules. The three versions move together, so this carries the dependency floors and the `sync`
+fix in `@linteljs/create`.
+
 ## 1.3.1
 
 No change to the rules. The three versions move together, so this carries the shipped agent rules and the starter
