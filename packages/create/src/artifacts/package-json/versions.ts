@@ -23,11 +23,11 @@ export const VERSIONS: Record<string, string> = {
   '@astrojs/svelte': '^9.0.1',
   '@astrojs/vue': '^7.0.2',
   '@babel/core': '^8.0.1',
-  '@commitlint/cli': '^21.2.1',
-  '@commitlint/config-conventional': '^21.2.0',
+  '@commitlint/cli': '^21.2.2',
+  '@commitlint/config-conventional': '^21.2.2',
   // Reads manifest.json and builds every surface it names: what makes an extension build out of a vanilla one.
   '@crxjs/vite-plugin': '^2.7.1',
-  '@eslint-react/eslint-plugin': '^5.18.4',
+  '@eslint-react/eslint-plugin': '^5.18.6',
   '@html-eslint/eslint-plugin': '^0.64.0',
   '@html-eslint/parser': '^0.64.0',
   // NgRx stable (21.x) peers on Angular 21 while `ng new` writes Angular 22; the rc peers `^22.0.0`, and the caret
@@ -74,7 +74,7 @@ export const VERSIONS: Record<string, string> = {
   // See `frameworks/next.ts`.
   '@next/eslint-plugin-next': '^16.3.0',
   // The sibling package: tracks its own version, and versions.test.ts fails the moment they diverge.
-  '@linteljs/eslint-config': '^1.3.1',
+  '@linteljs/eslint-config': '^1.3.2',
   'eslint-plugin-react-hooks': '^7.1.1',
   'eslint-plugin-astro': '^3.1.0',
   'eslint-plugin-jsx-a11y': '^6.10.2',

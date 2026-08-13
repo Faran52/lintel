@@ -1,30 +1,12 @@
 allowBuilds:
   sharp: true
   unrs-resolver: true
-
 minimumReleaseAgeExclude:
-  - '@eslint-react/ast@5.18.4'
-  - '@eslint-react/core@5.18.4'
-  - '@eslint-react/eslint-plugin@5.18.4'
-  - '@eslint-react/eslint@5.18.4'
-  - '@eslint-react/jsx@5.18.4'
-  - '@eslint-react/shared@5.18.4'
-  - '@eslint-react/var@5.18.4'
-  - eslint-plugin-react-dom@5.18.4
-  - eslint-plugin-react-jsx@5.18.4
-  - eslint-plugin-react-naming-convention@5.18.4
-  - eslint-plugin-react-rsc@5.18.4
-  - eslint-plugin-react-web-api@5.18.4
-  - eslint-plugin-react-x@5.18.4
+  - '@commitlint/*'
+  - '@eslint-react/*'
+  - 'eslint-plugin-react-*'
   - svelte@5.56.9
   - stylelint-config-recess-order@7.8.0
-
-# One version per shared dependency, referenced as `catalog:` from every package that uses it, so a bump is this file
-# and nothing else. Two things stay out. A dependency with a single consumer already has one place to change. And a
-# version that is part of a published surface stays pinned where it is published: `eslint-config` pins every runtime
-# dependency exactly so its rule set is reproducible, and `eslint-plugin` declares two of them only to lint itself.
-# Catalogued, a bump here would edit what `eslint-config` ships, whatever range the plugin happens to use. Peer ranges
-# stay spelled out for the same reason: `eslint` is `>=9` for a consumer and `catalog:` for development.
 catalog:
   '@types/node': ~24.13.3
   '@vitest/coverage-v8': ^4.1.10
@@ -33,12 +15,6 @@ catalog:
   typescript: ~6.0.3
   vitest: ^4.1.10
 
-# Two plugins stop their `eslint` peer range at 9, and both do run: `next()` names six `jsx-a11y` rules and `solid()`
-# loads its plugin's presets. Neither has a version that declares 10, so an allowance is the only lever there is; both
-# are deliberate direct dependencies rather than something arriving unasked through a bundle. Scoped with `>` so the
-# allowance reaches only the dependent named, and `@linteljs/create` emits the same block for a generated project.
-# `eslint-plugin-react` and `eslint-plugin-import` used to need one too, until `frameworks/next.ts` stopped pulling in
-# `eslint-config-next` and took them out of the tree.
 peerDependencyRules:
   allowedVersions:
     'eslint-plugin-jsx-a11y>eslint': '10'
