@@ -688,6 +688,32 @@ describe('main: sync', () => {
    * answer is dropped silently until it is threaded through there too: this one was, and the plan for a devtools-panel
    * project came back as a popup-and-background one. Only the end-to-end suite saw it, which is why it is pinned here.
    */
+  /**
+   * The bug this pins: both merges were written by a pipeline stage rather than being artifacts, so `sync` never ran
+   * them and a project that already existed could not gain a block added to either. The `peerDependencyRules` allowance
+   * shipped in 1.2.0 reached new projects and no old one, which a real migration found rather than a test.
+   */
+  it('merges into the workspace file and the gitignore a project already has', async () => {
+    await writeConfig({ ...DEFAULT_ANSWERS, target: 'next' });
+    await writeFile(
+      join(project, 'pnpm-workspace.yaml'),
+      "allowBuilds:\n  'sharp': true\n",
+      'utf8',
+    );
+    await writeFile(join(project, '.gitignore'), 'node_modules\n.next\n', 'utf8');
+
+    await runMain(['sync', '--force'], scripted([]));
+
+    const workspace = await readFile(join(project, 'pnpm-workspace.yaml'), 'utf8');
+    const ignore = await readFile(join(project, '.gitignore'), 'utf8');
+
+    expect(workspace).toContain('peerDependencyRules:');
+    // Merged, so the project's own entry survives rather than being replaced by ours.
+    expect(workspace).toContain("'sharp': true");
+    expect(ignore).toContain('coverage');
+    expect(ignore).toContain('.next');
+  });
+
   it('emits an extension from the surfaces the config recorded', async () => {
     await writeConfig({
       ...DEFAULT_ANSWERS,

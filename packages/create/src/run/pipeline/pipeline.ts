@@ -5,10 +5,8 @@ import { env } from 'node:process';
 
 import { type Artifact, buildArtifacts } from '../../artifacts';
 import { SETUP_TESTS_CANDIDATES } from '../../artifacts/banned-patterns/checkerArtifact';
-import { mergeGitignore } from '../../artifacts/gitignore/mergeGitignore';
 import { emitManifest } from '../../artifacts/manifest/emitManifest';
 import { emitPackageJson, parsePackageJson } from '../../artifacts/package-json/emitPackageJson';
-import { mergePnpmWorkspace } from '../../artifacts/pnpm-workspace/mergePnpmWorkspace';
 import { emitReadme } from '../../artifacts/readme/emitReadme';
 import { hasTests } from '../../model/answers/answers';
 import { CONFIG_PATH, emitLintelConfig } from '../../model/config/lintelConfig';
@@ -154,24 +152,6 @@ const stagePackage = async (
       options.answers,
       options.onWrite,
       options.onNotice,
-    );
-  }
-
-  // `coverage/` and `*.tsbuildinfo` are this tool's output, so no generator ignores them; merged rather than written to
-  // keep the scaffolder's own list (e.g. `.next/`).
-  const ignorePath = join(options.cwd, '.gitignore');
-
-  await write(options, '.gitignore', mergeGitignore(await readIfPresent(ignorePath)));
-
-  // Merged, not overwritten: discarding it breaks an install that already wrote into it, and skipping it leaves
-  // `create-next-app`'s build opt-out in place.
-  if (options.answers.packageManager === 'pnpm') {
-    const workspacePath = join(options.cwd, 'pnpm-workspace.yaml');
-
-    await write(
-      options,
-      'pnpm-workspace.yaml',
-      mergePnpmWorkspace(await readIfPresent(workspacePath), options.answers),
     );
   }
 };

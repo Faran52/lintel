@@ -22,6 +22,7 @@ import {
   type Answers,
   DEFAULT_ANSWERS,
   type Library,
+  type PackageManager,
   TARGET_IDS,
   type TargetId,
   type Testing,
@@ -39,6 +40,7 @@ interface AnswerOverrides {
   testing?: Testing;
   libraries?: Library[];
   typeSafety?: TypeSafety;
+  packageManager?: PackageManager;
 }
 
 const answersFor = (overrides: AnswerOverrides): Answers => {
@@ -139,15 +141,28 @@ describe('buildArtifacts', () => {
     expect(targetsOf({ testing: 'none' })).not.toContain('vitest.config.ts');
   });
 
-  // Merges and birth-only files are the project's, so nothing diffs a whole shipped copy.
-  it('claims none of the files lintel only part-owns or writes once outside agent adapters', () => {
+  /**
+   * `package.json` and `README.md` stay out: the first is reconciled by the package stage against what a project
+   * already declares, and the second is a project's own the moment anyone edits it.
+   *
+   * A merge is not in that category, and treating it as one was a defect. `.gitignore` and `pnpm-workspace.yaml` are
+   * merged artifacts, so `sync` applies them to a project that already exists; while they were written by a pipeline
+   * stage instead, the `peerDependencyRules` allowance added in 1.2.0 reached new projects and no old one.
+   */
+  it('claims the merges it owns half of, and not the files a project owns', () => {
     const targets = targetsOf({});
 
+    expect(targets).toContain('.gitignore');
+    expect(targets).toContain('pnpm-workspace.yaml');
     expect(targets).not.toContain('package.json');
-    expect(targets).not.toContain('.gitignore');
-    expect(targets).not.toContain('pnpm-workspace.yaml');
     expect(targets).not.toContain('README.md');
     expect(artifactFor({}, 'CLAUDE.md')?.preserve).toBe(true);
+  });
+
+  // Nothing to merge into for the three managers with no workspace file of this shape.
+  it('owns the workspace file only under pnpm', () => {
+    expect(targetsOf({ packageManager: 'pnpm' })).toContain('pnpm-workspace.yaml');
+    expect(targetsOf({ packageManager: 'npm' })).not.toContain('pnpm-workspace.yaml');
   });
 
   it('ships shared references without Claude path frontmatter', async () => {

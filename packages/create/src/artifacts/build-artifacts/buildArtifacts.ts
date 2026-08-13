@@ -14,6 +14,8 @@ import {
 import { emitAstroConfig } from '../astro-config/emitAstroConfig';
 import { checkerArtifact, setupTestsPath } from '../banned-patterns/checkerArtifact';
 import { emitEslintConfig } from '../eslint-config/emitEslintConfig';
+import { mergeGitignore } from '../gitignore/mergeGitignore';
+import { mergePnpmWorkspace } from '../pnpm-workspace/mergePnpmWorkspace';
 import { mergeStyleEntry } from '../style-entry/mergeStyleEntry';
 import { emitStylelintConfig } from '../stylelint-config/emitStylelintConfig';
 import { emitTsconfig } from '../tsconfig/emitTsconfig';
@@ -31,7 +33,16 @@ const setupSources = (answers: Answers, target: TargetRecord): string[] => {
   ];
 };
 
-// Excludes merges, template fills and birth-only files. `existingSetup` preserves a project's setup spelling.
+/**
+ * Every file this CLI owns some or all of, which is what both `create` and `sync` write from. Template fills and
+ * birth-only files are not here, because a project owns those after the first write.
+ *
+ * A merge belongs here too, not in a pipeline stage. `.gitignore` and `pnpm-workspace.yaml` were written by `create`
+ * alone for exactly that reason, so a project that already existed never gained a block added to either: the
+ * `peerDependencyRules` allowance shipped in 1.2.0 reached new projects and no old one, which a real migration found.
+ *
+ * `existingSetup` preserves a project's setup spelling.
+ */
 export const buildArtifacts = (answers: Answers, existingSetup?: string): Artifact[] => {
   const target = targetFor(answers);
   const setup = setupTestsPath(answers, existingSetup);
@@ -60,6 +71,20 @@ export const buildArtifacts = (answers: Answers, existingSetup?: string): Artifa
   // Tailwind generates nothing until a stylesheet imports it, and only create-next-app writes that line itself.
   if (hasLibrary(answers, 'tailwind') && target.styleEntry !== undefined) {
     artifacts.push(merged('standard', target.styleEntry, mergeStyleEntry));
+  }
+
+  /**
+   * `coverage/` and `*.tsbuildinfo` are this tool's output, so no generator ignores them. Merged rather than written,
+   * to keep the scaffolder's own list (`.next/` and friends).
+   */
+  artifacts.push(merged('package', '.gitignore', mergeGitignore));
+
+  // Merged for the same reason, and only where it means something: discarding it breaks an install that already wrote
+  // into it, and skipping it leaves `create-next-app`'s build opt-out in place.
+  if (answers.packageManager === 'pnpm') {
+    artifacts.push(merged('package', 'pnpm-workspace.yaml', (current) => {
+      return mergePnpmWorkspace(current, answers);
+    }));
   }
 
   if (viteConfig !== null) {

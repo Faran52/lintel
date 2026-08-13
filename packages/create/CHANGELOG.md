@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`sync` now applies the two merges, so a project that already exists gains what a release adds to
+  them.** `.gitignore` and `pnpm-workspace.yaml` were written by a `create` pipeline stage rather than
+  being artifacts, and `sync` only writes artifacts. The `peerDependencyRules` allowance shipped in
+  1.2.0 therefore reached every new project and no existing one, despite that entry describing it as
+  merged "so a project generated before this gains the block". Both are `merged` artifacts now, which
+  is the shape `mergeStyleEntry` already used, so the two routes write the same set.
+
+  Found by migrating a real project rather than by a test, and the test that codified the old
+  behaviour is why it survived: it asserted neither file was an artifact, reading "a merge is the
+  project's" from a list that already held a merge. It now asserts the opposite, and fails when either
+  merge leaves the list.
+
 ## 1.3.1
 
 ### Changed
