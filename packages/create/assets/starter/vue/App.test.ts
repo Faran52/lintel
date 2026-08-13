@@ -4,7 +4,6 @@ import { mount } from '@vue/test-utils';
 import App from './App.vue';
 import router from './router';
 
-// No Pinia here on purpose: nothing the welcome tree mounts reads a store, and the store answer may have declined it.
 describe('App', () => {
   it('renders both routes', async () => {
     const wrapper = mount(App, { global: { plugins: [router] } });

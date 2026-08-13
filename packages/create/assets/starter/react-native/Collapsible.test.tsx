@@ -10,7 +10,6 @@ import { ThemedText } from '@/components/ThemedText';
 
 import { Collapsible } from './Collapsible';
 
-// Also evaluates the `Pressable` style callback held: the test renderer never enters that state.
 vi.mock('react-native', async () => {
   const actual = await vi.importActual<typeof import('react-native')>('react-native');
   const held: PressableStateCallbackType = { pressed: true, hovered: false };

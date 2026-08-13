@@ -4,7 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import AppTabs, { CustomTabList, TabButton } from './AppTabs.web';
 
-// `expo-router/ui` ships untranspiled sources under `node_modules`, so its primitives are stood in for.
 const { mockScheme } = vi.hoisted(() => {
   return { mockScheme: vi.fn(() => 'light') };
 });
@@ -12,7 +11,6 @@ const { mockScheme } = vi.hoisted(() => {
 vi.mock('react-native', async () => {
   const actual = await vi.importActual<typeof import('react-native')>('react-native');
 
-  // Also evaluates the style callback held: the test renderer never enters that state.
   const held: PressableStateCallbackType = { pressed: true, hovered: false };
   const Pressable = (props: PressableProps) => {
     if (typeof props.style === 'function') {
@@ -49,7 +47,6 @@ vi.mock('expo-router/ui', async () => {
   };
 });
 
-// Pulls `expo-web-browser` and `expo-modules-core` in behind it, neither of which loads here.
 vi.mock('./ExternalLink', async () => {
   const { Text } = await vi.importActual<typeof import('react-native')>('react-native');
 

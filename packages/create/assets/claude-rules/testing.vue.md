@@ -28,6 +28,8 @@ Use these rules when touching tests, mocks, or test setup.
   is asserting the previous render.
 - A component using a Pinia store is mounted with a **real** store from `createTestingPinia({
   stubActions: false })` seeded with real state. Stubbing the store tests the stub.
+- Mount with the plugins the tree actually reads, and no others. A component that reads no store
+  takes no Pinia, which also keeps its test working in a project that declined the store answer.
 - Mount, do not shallow-mount. `shallowMount` stubs the children, which is where the behaviour
   usually is.
 

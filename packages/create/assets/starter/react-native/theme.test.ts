@@ -8,7 +8,6 @@ import {
   Spacing,
 } from './theme';
 
-// `Platform.select` is read once at module load, so `resetModules` per read is the only way to reach another arm.
 const themeOn = async (os: string): Promise<typeof import('./theme')> => {
   vi.resetModules();
   vi.doMock('react-native', async () => {
@@ -20,7 +19,6 @@ const themeOn = async (os: string): Promise<typeof import('./theme')> => {
       },
     };
 
-    // A proxy, not a spread: spreading reads every lazy getter and initialises internals that fail an invariant.
     return new Proxy(actual, {
       get: (target, key): unknown => {
         return key === 'Platform' ? platform : Reflect.get(target, key);
@@ -68,7 +66,6 @@ describe('Fonts', () => {
     expect((await themeOn('ios')).Fonts.sans).toBe('system-ui');
   });
 
-  // Neither `ios` nor `web` is named, so this is the `default` arm.
   it('falls back to the generic families on a platform it does not name', async () => {
     expect((await themeOn('android')).Fonts.sans).toBe('normal');
   });
@@ -80,7 +77,6 @@ describe('BottomTabInset', () => {
     expect((await themeOn('android')).BottomTabInset).toBe(80);
   });
 
-  // The `?? 0` arm: web has no native tab bar, so `select` matches nothing.
   it('reserves nothing where there is no native tab bar', async () => {
     expect((await themeOn('web')).BottomTabInset).toBe(0);
   });

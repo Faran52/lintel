@@ -11,8 +11,7 @@ describe('AnimatedIcon (web)', () => {
 });
 
 describe('AnimatedSplashOverlay (web)', () => {
-  // The web build has no splash screen to cover, so the overlay is deliberately nothing.
-  it('renders nothing at all', async () => {
+  it('renders nothing, the web build having no splash screen to cover', async () => {
     const view = await render(<AnimatedSplashOverlay />);
 
     expect(view.toJSON()).toBeNull();

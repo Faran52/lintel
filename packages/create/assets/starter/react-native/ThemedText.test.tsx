@@ -21,7 +21,6 @@ const styleOf = (testID: string): Record<string, unknown> => {
   return StyleSheet.flatten(style) as Record<string, unknown>;
 };
 
-// Every variant, because each one is its own `type === '...'` branch in the style array.
 const TYPES: NonNullable<ThemedTextProps['type']>[] = [
   'default',
   'title',
@@ -34,7 +33,7 @@ const TYPES: NonNullable<ThemedTextProps['type']>[] = [
 ];
 
 describe('ThemedText', () => {
-  it.each(TYPES)('gives the %s variant a font size of its own', async (type) => {
+  it.each(TYPES)('gives the %s variant a font size of its own, each being its own style branch', async (type) => {
     await render(<ThemedText testID="text" type={type}>body</ThemedText>);
 
     expect(styleOf('text').fontSize).toBeGreaterThan(0);

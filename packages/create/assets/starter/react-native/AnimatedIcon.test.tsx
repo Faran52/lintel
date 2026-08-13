@@ -16,7 +16,6 @@ describe('AnimatedSplashOverlay', () => {
     const view = await render(<AnimatedSplashOverlay />);
     const before = JSON.stringify(view.toJSON());
 
-    // `onLayout` is fired by the native runtime, absent here, so calling it is the only way into the animated branch.
     await act(async () => {
       const root = view.root;
 

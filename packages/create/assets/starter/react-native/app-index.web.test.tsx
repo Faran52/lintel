@@ -4,7 +4,6 @@ import { renderScreen } from '@mocks/renderScreen';
 
 import Home from './app/index';
 
-// `Platform.OS` is read at call time, so forcing it reaches arms a native run cannot. A proxy, not a spread.
 vi.mock('react-native', async () => {
   const actual = await vi.importActual<typeof import('react-native')>('react-native');
   const platform = {

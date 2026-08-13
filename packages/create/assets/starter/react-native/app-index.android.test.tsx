@@ -4,7 +4,6 @@ import { renderScreen } from '@mocks/renderScreen';
 
 import Home from './app/index';
 
-// The simulator shortcut differs per platform, and the ternary picking it is a branch each way.
 vi.mock('react-native', async () => {
   const actual = await vi.importActual<typeof import('react-native')>('react-native');
   const platform = {

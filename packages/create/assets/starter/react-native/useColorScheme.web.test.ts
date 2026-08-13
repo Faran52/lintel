@@ -2,7 +2,6 @@ import { renderHook } from '@testing-library/react-native';
 
 import { useColorScheme } from './useColorScheme.web';
 
-// Stubbed so all three callbacks the hook hands it run: React reaches the server snapshot only during hydration.
 const { store } = vi.hoisted(() => {
   return { store: { server: false } };
 });
@@ -17,9 +16,8 @@ vi.mock('react', async () => {
       getSnapshot: () => boolean,
       getServerSnapshot: () => boolean,
     ) => {
-      // Run the teardown too, so the unsubscribe the hook returns is not dead code.
       const unsubscribe = subscribe(() => {
-        // The value never changes after hydration, so nothing is ever notified.
+        return undefined;
       });
 
       unsubscribe();

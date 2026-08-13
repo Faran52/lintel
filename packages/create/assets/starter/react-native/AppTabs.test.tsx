@@ -19,10 +19,8 @@ vi.mock('react-native', async () => {
   });
 });
 
-// The native tab bar has no implementation under a unit test, so this stands in for one.
 vi.mock('expo-router/unstable-native-tabs', async () => {
   const { View, Text } = await vi.importActual<typeof import('react-native')>('react-native');
-  // The stand-in carries the testID the assertions read the colours off.
   const NativeTabs = ({ children, ...rest }: { children?: ReactNode }) => {
     return <View testID="native-tabs" {...rest}>{children}</View>;
   };
@@ -62,8 +60,7 @@ describe('AppTabs', () => {
     expect(screen.getByTestId('native-tabs').props.backgroundColor).toBe(Colors.dark.background);
   });
 
-  // `unspecified` indexes the palette with a key it does not have, so the fallback is a branch.
-  it('falls back to light when the system expresses no preference', async () => {
+  it('falls back to light when the system reports unspecified, which no palette has a key for', async () => {
     mockScheme.mockReturnValue('unspecified');
 
     await render(<AppTabs />);

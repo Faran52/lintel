@@ -8,7 +8,6 @@ import { openBrowserAsync } from 'expo-web-browser';
 
 import { ExternalLink } from './ExternalLink';
 
-// `Link` wants a router around it, which no unit test has. A pressable stands in for it.
 vi.mock('expo-router', async () => {
   const { Pressable } = await vi.importActual<typeof import('react-native')>('react-native');
 
@@ -43,7 +42,6 @@ describe('ExternalLink', () => {
     expect(openBrowserAsync).toHaveBeenCalledWith(HREF, { presentationStyle: 'automatic' });
   });
 
-  // `EXPO_OS` stays a runtime read under vitest, where `babel-preset-expo` would have inlined it.
   it('leaves the press alone on web, where the browser is already the browser', async () => {
     vi.stubEnv('EXPO_OS', 'web');
 

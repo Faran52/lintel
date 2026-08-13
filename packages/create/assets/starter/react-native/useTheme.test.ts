@@ -5,7 +5,6 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 
 import { useTheme } from './useTheme';
 
-// The project's own re-export, not `react-native`: spreading that module fails an invariant before a test runs.
 vi.mock('@/hooks/useColorScheme', () => {
   return { useColorScheme: vi.fn() };
 });
@@ -31,8 +30,7 @@ describe('useTheme', () => {
     expect(await themeFrom('light')).toBe(Colors.light);
   });
 
-  // `unspecified` is a real value on Android, and indexing the palette with it is `undefined`.
-  it('falls back to light when the system expresses no preference', async () => {
+  it('falls back to light when the system reports unspecified, as Android does', async () => {
     expect(await themeFrom('unspecified')).toBe(Colors.light);
   });
 });

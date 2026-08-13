@@ -13,8 +13,7 @@ vi.mock('@/hooks/useTheme', async () => {
 });
 
 describe('HintRow', () => {
-  // Both parameters carry a default, which is a branch each.
-  it('falls back to its own title and hint', async () => {
+  it('falls back to the default title and the default hint, which are a branch each', async () => {
     await render(<HintRow />);
 
     expect(screen.getByText('Try editing')).toBeTruthy();

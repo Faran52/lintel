@@ -3,7 +3,6 @@ import { version } from 'expo/package.json';
 
 import { WebBadge } from './WebBadge';
 
-// Hoisted because a mock factory is lifted above every other binding in the file.
 const { mockScheme } = vi.hoisted(() => {
   return { mockScheme: vi.fn() };
 });
@@ -28,7 +27,6 @@ vi.mock('@/hooks/useTheme', async () => {
   };
 });
 
-// The whole tree, because the only thing that differs between schemes is an image source.
 const badgeTree = async (scheme: string): Promise<string> => {
   mockScheme.mockReturnValue(scheme);
 
@@ -46,7 +44,6 @@ describe('WebBadge', () => {
 
     await render(<WebBadge />);
 
-    // The "v" prefix and the number are separate text nodes, so this matches across both.
     expect(screen.getByText(new RegExp(version.replaceAll('.', '\\.')))).toBeTruthy();
   });
 

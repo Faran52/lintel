@@ -12,7 +12,6 @@ vi.mock('@/components/ExternalLink', async () => {
   return { ExternalLink: ({ children }: { children?: React.ReactNode }) => <Text>{children}</Text> };
 });
 
-// Web is the only platform that shows the version badge, and the padding differs there too.
 vi.mock('react-native', async () => {
   const actual = await vi.importActual<typeof import('react-native')>('react-native');
   const platform = {
@@ -22,7 +21,6 @@ vi.mock('react-native', async () => {
     },
   };
 
-  // Also evaluates the style callback held: the test renderer never enters that state.
   const held: PressableStateCallbackType = { pressed: true, hovered: false };
   const Pressable = (props: PressableProps) => {
     if (typeof props.style === 'function') {
