@@ -195,13 +195,13 @@ const runSync = async (options: CliOptions, answers: Answers): Promise<void> => 
     return;
   }
 
-  pending.forEach((entry) => {
+  for (const entry of pending) {
     say(`\n${entry.target}: ${entry.status}`);
 
     if (entry.diff !== '') {
       say(entry.diff);
     }
-  });
+  }
 
   if (!options.force) {
     say('\nNothing written. Re-run with --force to overwrite the files listed above.');
@@ -216,13 +216,13 @@ const runSync = async (options: CliOptions, answers: Answers): Promise<void> => 
     }),
   );
 
-  written.forEach((target) => {
+  for (const target of written) {
     say(`wrote ${target}`);
-  });
+  }
 
-  removed.forEach((target) => {
+  for (const target of removed) {
     say(`removed ${target}`);
-  });
+  }
 };
 
 // Returns the exit code rather than calling `process.exit`, which would drop queued stderr writes;

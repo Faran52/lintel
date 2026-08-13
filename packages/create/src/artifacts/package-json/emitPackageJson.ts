@@ -115,7 +115,7 @@ export const versioned = (names: string[]): Record<string, string> => {
     return left.localeCompare(right, 'en');
   });
 
-  sorted.forEach((name) => {
+  for (const name of sorted) {
     const version = VERSIONS[name];
 
     if (version === undefined) {
@@ -123,7 +123,7 @@ export const versioned = (names: string[]): Record<string, string> => {
     }
 
     result[name] = version;
-  });
+  }
 
   return result;
 };

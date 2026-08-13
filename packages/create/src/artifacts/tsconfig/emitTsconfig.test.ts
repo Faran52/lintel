@@ -99,8 +99,8 @@ describe('buildTsconfig', () => {
 // The alias list feeds three consumers: tsconfig paths, base({ aliases })'s import-sort buckets, and the import-x
 // resolver; hand-kept copies are what drifted in the reference repos.
 describe('alias coupling', () => {
-  TARGET_IDS.forEach((target) => {
-    [true, false].forEach((withZod) => {
+  for (const target of TARGET_IDS) {
+    for (const withZod of [true, false]) {
       const libraries: Library[] = withZod ? ['zod'] : [];
       const label = `${target}${withZod ? ' with zod' : ''}`;
 
@@ -112,10 +112,10 @@ describe('alias coupling', () => {
 
         expect(Object.keys(paths)).toEqual(Object.keys(aliases));
 
-        Object.entries(aliases).forEach(([alias, directory]) => {
+        for (const [alias, directory] of Object.entries(aliases)) {
           expect(paths[alias]).toEqual([directory]);
           expect(config).toContain(`'${alias}': '${directory}',`);
-        });
+        }
 
         /**
          * Nothing outside the shared list may reach the config: an alias emitted into one consumer and not the
@@ -134,8 +134,8 @@ describe('alias coupling', () => {
           }),
         );
       });
-    });
-  });
+    }
+  }
 
   it('carries the target-only aliases through all three consumers', () => {
     const answers = answersFor({ target: 'next' });
@@ -148,14 +148,16 @@ describe('alias coupling', () => {
   });
 
   it('gives them to no other target', () => {
-    TARGET_IDS.filter((target) => {
+    const others = TARGET_IDS.filter((target) => {
       return target !== 'next';
-    }).forEach((target) => {
+    });
+
+    for (const target of others) {
       const { paths } = buildTsconfig(answersFor({ target })).compilerOptions;
 
       expect(paths).not.toHaveProperty('@server/*');
       expect(paths).not.toHaveProperty('@content/*');
-    });
+    }
   });
 
   // An alias naming a directory the target's own repo-structure.md doesn't describe is a dead end; the extension target

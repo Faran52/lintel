@@ -148,9 +148,11 @@ for (const file of files) {
   // Same line count, so `source[index]` is the scannable half of the line reported as `line`.
   const source = blankMultilineSpans(sfc ? scriptBlocksOnly(content) : content).split('\n');
 
-  content.split('\n').forEach((line, index) => {
+  for (const [index, line] of content.split('\n').entries()) {
+    // `continue`, not `return`: this skips one line, which is what the callback's `return` meant before the loop was
+    // a loop rather than a `forEach`.
     if (isAliasOrImportLine(line)) {
-      return;
+      continue;
     }
 
     const scrubbed = stripStringsAndComments(source[index] ?? '');
@@ -166,14 +168,14 @@ for (const file of files) {
     if (match) {
       hits.push(`${String(index + 1)}: ${line.trim()}  [${match.name}]`);
     }
-  });
+  }
 
   if (hits.length > 0) {
     console.error(`✘ Banned pattern in ${file}:`);
 
-    hits.forEach((hit) => {
+    for (const hit of hits) {
       console.error(`  ${hit}`);
-    });
+    }
 
     failed = true;
   }

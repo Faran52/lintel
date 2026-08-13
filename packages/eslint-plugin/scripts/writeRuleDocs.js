@@ -45,10 +45,10 @@ const relink = (text, id) => {
   });
 };
 
-ruleIds.forEach((id) => {
+for (const id of ruleIds) {
   const source = readFileSync(join(rulesDir, id, 'README.md'), 'utf8');
 
   writeFileSync(join(docsDir, `${id}.md`), relink(source, id));
-});
+}
 
 console.log(`✓ wrote ${String(ruleIds.length)} rule docs to docs/rules`);

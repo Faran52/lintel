@@ -112,14 +112,14 @@ export const planSync = async (cwd: string, answers: Answers): Promise<SyncPlan>
 const pruneEmpty = async (cwd: string, removed: string[]): Promise<void> => {
   const directories = new Set<string>();
 
-  removed.forEach((target) => {
+  for (const target of removed) {
     let directory = dirname(target);
 
     while (directory !== '.') {
       directories.add(directory);
       directory = dirname(directory);
     }
-  });
+  }
 
   // A child path is always longer than its parent, so length descending is depth-first without counting separators.
   const deepestFirst = [...directories].sort((left, right) => {

@@ -726,11 +726,11 @@ describe('scaffoldCommand', () => {
       '--no-add-ons',
     ];
 
-    TARGET_IDS.forEach((target) => {
+    for (const target of TARGET_IDS) {
       expect([target, scaffoldFor({ target }).some((argument) => {
         return suppressors.includes(argument);
       })]).toEqual([target, true]);
-    });
+    }
   });
 
   it('follows the package manager answer where the generator takes one', () => {

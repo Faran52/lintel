@@ -84,11 +84,11 @@ describe('FOLDER_NAMING', () => {
     const routed = ['react', 'next', 'solid', 'react-native', 'svelte'] as const;
     const plain = ['vue', 'angular', 'webextension'] as const;
 
-    routed.forEach((target) => {
+    for (const target of routed) {
       expect(FOLDER_NAMING[target]).toEqual({ 'src/**/': FOLDER_ROUTED });
-    });
-    plain.forEach((target) => {
+    }
+    for (const target of plain) {
       expect(FOLDER_NAMING[target]).toEqual({ 'src/**/': FOLDER });
-    });
+    }
   });
 });

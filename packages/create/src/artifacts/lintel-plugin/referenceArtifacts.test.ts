@@ -109,8 +109,8 @@ describe('referenceArtifacts', () => {
       return await contentOf(content);
     }));
 
-    contents.forEach((text) => {
+    for (const text of contents) {
       expect(text).not.toMatch(/^---\npaths:/u);
-    });
+    }
   });
 });

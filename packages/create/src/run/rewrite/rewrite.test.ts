@@ -241,12 +241,12 @@ describe('guardMountLookups', () => {
   it('is idempotent, because a re-run sees the shape it produced', () => {
     // `--skip-scaffold` runs this over its own already-guarded output, so a second guard landing
     // where the binding is already narrowed would fail `no-unnecessary-condition`.
-    [REACT_ENTRY, SOLID_ENTRY, PLAIN_ENTRY].forEach((entry) => {
+    for (const entry of [REACT_ENTRY, SOLID_ENTRY, PLAIN_ENTRY]) {
       const once = guardMountLookups(entry);
 
       expect(guardMountLookups(once)).toBe(once);
       expect(guardMountLookups(guardMountLookups(once))).toBe(once);
-    });
+    }
   });
 
   it('leaves a shape it does not recognise exactly as it was', () => {

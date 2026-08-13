@@ -130,9 +130,9 @@ const axisCases = (): [string, Answers][] => {
 
 describe('TARGETS', () => {
   it('holds one record per known target id, keyed by its own id', () => {
-    TARGET_IDS.forEach((id) => {
+    for (const id of TARGET_IDS) {
       expect(recordFor(id).id).toBe(id);
-    });
+    }
   });
 
   it('holds exactly the nine known targets, no more and no fewer', () => {

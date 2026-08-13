@@ -46,11 +46,11 @@ describe('emitStylelintConfig', () => {
   // A CSS module's classes are camelCase JS properties, so the kebab-case demand can't be met; it's the one finding
   // `stylelint --fix` can't clear, leaving `lint:css` unpassable otherwise.
   it('lets a CSS module keep the camelCase classes its consumer reads', () => {
-    TARGET_IDS.forEach((target) => {
+    for (const target of TARGET_IDS) {
       const config = emitStylelintConfig({ ...DEFAULT_ANSWERS, target });
 
       expect(config).toContain("files: ['**/*.module.css'],");
       expect(config).toContain("'selector-class-pattern': '^[a-z][a-zA-Z0-9]*$',");
-    });
+    }
   });
 });

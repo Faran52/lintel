@@ -50,14 +50,14 @@ const SCAFFOLDED: PackageJson = {
 // project.
 describe('versioned', () => {
   it('has a resolvable range for every dependency every target and library declares', () => {
-    TARGET_IDS.forEach((target) => {
-      LIBRARIES.forEach((library) => {
+    for (const target of TARGET_IDS) {
+      for (const library of LIBRARIES) {
         expect(() => {
           // `store: true` so every target's store dependency is held to a VERSIONS entry too.
           return patchPackageJson({}, answersFor({ target, libraries: [library], store: true }));
         }).not.toThrow();
-      });
-    });
+      }
+    }
   });
 
   it('stops on a name it has no range for, rather than dropping it', () => {

@@ -145,13 +145,13 @@ describe('emitEslintConfig', () => {
   // The emitted file is linted by the config it emits; React Native's eight ignores on one line came to 133 characters
   // and self-reported a finding.
   it('keeps every emitted line inside the max-len the emitted config enforces', () => {
-    TARGET_IDS.forEach((target) => {
+    for (const target of TARGET_IDS) {
       const tooLong = emitEslintConfig(answersFor({ target })).split('\n').filter((line) => {
         return line.length > 120;
       });
 
       expect({ target, tooLong }).toEqual({ target, tooLong: [] });
-    });
+    }
   });
 
   it('asks for a library layer only when its library was selected', () => {
@@ -242,9 +242,9 @@ describe('emitEslintConfig', () => {
 
   // The published `defineConfig` option is consumer API and still takes a boolean; what this CLI emits is always true.
   it('turns the typescript layer on for every target', () => {
-    TARGET_IDS.forEach((target) => {
+    for (const target of TARGET_IDS) {
       expect(emitEslintConfig(answersFor({ target }))).toContain('typescript: true,');
-    });
+    }
   });
 
   // A test/spec mirrors its subject's name and carries no key of its own: check-file applies every matching key, so
@@ -273,9 +273,9 @@ describe('emitEslintConfig', () => {
 
 describe('folderNaming', () => {
   it('asks for kebab-case folders on every target', () => {
-    TARGET_IDS.forEach((target) => {
+    for (const target of TARGET_IDS) {
       expect(emitEslintConfig(answersFor({ target }))).toContain('folderNaming: {');
-    });
+    }
   });
 
   // A router segment (`[slug]`, `(tabs)`) is not kebab-case, so the React family, Solid and Svelte permit both via a
@@ -284,15 +284,15 @@ describe('folderNaming', () => {
     const routed = ['react', 'next', 'solid', 'react-native', 'svelte'] as const;
     const plain = ['vue', 'angular', 'webextension'] as const;
 
-    routed.forEach((target) => {
+    for (const target of routed) {
       expect(emitEslintConfig(answersFor({ target }))).toContain(String.raw`|__tests__|\[*\]|`);
-    });
-    plain.forEach((target) => {
+    }
+    for (const target of plain) {
       const emitted = emitEslintConfig(answersFor({ target }));
 
       expect(emitted).toContain("'src/**/': '@(+([a-z0-9])*(-+([a-z0-9]))|__tests__)'");
       expect(emitted).not.toContain(String.raw`\\[`);
-    });
+    }
   });
 
   /**

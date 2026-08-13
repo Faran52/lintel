@@ -241,9 +241,9 @@ if (fixes.size === MAJORS.length && failures.length === 0) {
 if (failures.length > 0) {
   console.error(`\n✗ ${String(failures.length)} of ${String(MAJORS.length)} majors failed:`);
 
-  failures.forEach((failure) => {
+  for (const failure of failures) {
     console.error(`  ${failure}`);
-  });
+  }
 
   exit(1);
 }

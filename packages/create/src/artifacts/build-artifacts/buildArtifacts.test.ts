@@ -158,13 +158,13 @@ describe('buildArtifacts', () => {
   });
 
   it('marks every shell script and git hook executable', () => {
-    buildArtifacts(answersFor({})).forEach((artifact) => {
+    for (const artifact of buildArtifacts(answersFor({}))) {
       const isScript = artifact.target.endsWith('.sh') || artifact.target.startsWith('.husky/');
       expect(artifact.executable === true).toBe(isScript);
-    });
+    }
   });
 
-  TARGET_IDS.forEach((target) => {
+  for (const target of TARGET_IDS) {
     it(`resolves every artifact for ${target}`, async () => {
       const artifacts = buildArtifacts(answersFor({ target, libraries: ['zod'] }));
 
@@ -179,7 +179,7 @@ describe('buildArtifacts', () => {
 
       expect(artifacts.length).toBeGreaterThan(0);
     });
-  });
+  }
 });
 
 // typeSafety reaches three places that must agree: the checker's constant, the rule file's deviations section, and the
@@ -389,8 +389,8 @@ describe('the test runner', () => {
   });
 
   it('writes no jest config for anything', () => {
-    TARGET_IDS.forEach((target) => {
+    for (const target of TARGET_IDS) {
       expect(targetsOf({ target })).not.toContain('jest.config.js');
-    });
+    }
   });
 });
