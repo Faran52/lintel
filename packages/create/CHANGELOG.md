@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
 
 ### Added
 
@@ -73,9 +73,6 @@
   `styleEntry` on the target record: the stylesheet that target's own scaffolder writes and already wires. Verified
   against each published template rather than assumed, which is why Svelte has none: `sv create --template minimal`
   ships no stylesheet, so there is no path to name. See the `@linteljs/eslint-config` entry for what the setting buys.
-
-
-
 - The emitted `pnpm-workspace.yaml` carries a `peerDependencyRules.allowedVersions` block for the plugins whose own
   `eslint` peer range closes before the major this CLI installs, so a generated project does not meet four warnings on
   its first install. Four qualify, checked against the installed ranges rather than assumed: `eslint-config-next`

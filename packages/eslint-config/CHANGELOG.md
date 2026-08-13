@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0
+
+No change to the layers. The three versions move together, so this carries the extension target's
+surfaces axis in `@linteljs/create`.
+
 ## 1.2.0
 
 ### Fixed
