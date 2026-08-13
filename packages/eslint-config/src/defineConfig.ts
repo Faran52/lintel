@@ -19,6 +19,12 @@ interface FrameworkParts {
   group: string[];
 }
 
+// What a library layer may read off the caller's options. An object rather than a positional, so the day a second
+// layer needs something the signature gains a key instead of an argument every entry has to accept.
+interface LibraryOptions {
+  tailwindEntryPoint?: string;
+}
+
 // Loaded on demand: each plugin here is an optional peer, so importing all six statically breaks most projects.
 const FRAMEWORKS: Record<Framework, () => Promise<FrameworkParts>> = {
   react: async () => {
@@ -60,16 +66,16 @@ const FRAMEWORKS: Record<Framework, () => Promise<FrameworkParts>> = {
   },
 };
 
-const LIBRARIES: Record<LibraryLayer, () => Promise<Layer>> = {
+const LIBRARIES: Record<LibraryLayer, (options: LibraryOptions) => Promise<Layer>> = {
   'tanstack-query': async () => {
     const { tanstackQuery } = await import('./libraries/tanstackQuery');
 
     return tanstackQuery();
   },
-  'tailwind': async () => {
+  'tailwind': async ({ tailwindEntryPoint }) => {
     const { tailwind } = await import('./libraries/tailwind');
 
-    return tailwind();
+    return tailwind(tailwindEntryPoint);
   },
 };
 
@@ -85,6 +91,12 @@ const htmlLayer = async (): Promise<Layer> => {
   return html();
 };
 
+const astroLayer = async (): Promise<Layer> => {
+  const { astro } = await import('./astro');
+
+  return astro();
+};
+
 // Async because the layers above load on demand; a config file may await it or hand ESLint the promise.
 export const defineConfig = async (options: DefineConfigOptions = {}): Promise<Layer> => {
   const {
@@ -92,20 +104,24 @@ export const defineConfig = async (options: DefineConfigOptions = {}): Promise<L
     typescript: withTypescript,
     vitest: withVitest,
     html: withHtml,
+    astro: withAstro,
     libraries = [],
+    // Destructured so it does not reach `base()`, which takes no such option.
+    tailwindEntryPoint,
     ...baseOptions
   } = options;
 
   let parts: FrameworkParts | undefined;
   let vitestRules: Layer = [];
   let htmlRules: Layer = [];
+  let astroRules: Layer = [];
 
   if (framework !== undefined) {
     parts = await FRAMEWORKS[framework]();
   }
 
   const libraryLayers = await Promise.all(libraries.map(async (library) => {
-    return LIBRARIES[library]();
+    return LIBRARIES[library]({ tailwindEntryPoint });
   }));
 
   if (withVitest === true) {
@@ -116,6 +132,10 @@ export const defineConfig = async (options: DefineConfigOptions = {}): Promise<L
     htmlRules = await htmlLayer();
   }
 
+  if (withAstro === true) {
+    astroRules = await astroLayer();
+  }
+
   return [
     ...base(parts === undefined ? baseOptions : { ...baseOptions, frameworkGroup: parts.group }),
     ...(withTypescript === true ? typescript() : []),
@@ -123,6 +143,8 @@ export const defineConfig = async (options: DefineConfigOptions = {}): Promise<L
     ...libraryLayers.flat(),
     ...vitestRules,
     ...htmlRules,
+    // Last, so its parser owns `.astro` after `typescript()` has claimed the script extensions.
+    ...astroRules,
   ];
 };
 

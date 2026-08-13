@@ -17,6 +17,12 @@ export type NamingMap = Record<string, NamingRule>;
 
 export interface ResolverOptions {
   project?: string;
+  /**
+   * Export-map conditions, in the order the resolver tries them. Left unset by default: see `base.ts` for why putting
+   * `import` ahead of `types` is not a safe default. Set it where a dependency publishes subpaths through a wildcard
+   * `exports` map that the `types` condition cannot satisfy.
+   */
+  conditionNames?: string[];
 }
 
 export interface BaseOptions {
@@ -45,5 +51,10 @@ export interface DefineConfigOptions extends Omit<BaseOptions, 'frameworkGroup'>
   typescript?: boolean;
   vitest?: boolean;
   html?: boolean;
+  // `.astro` templates. A file type rather than a framework, so it stacks with one instead of replacing it.
+  astro?: boolean;
   libraries?: LibraryLayer[];
+  // The CSS file holding `@import "tailwindcss"`, so the tailwind layer can read the project's own theme. Ignored
+  // unless `libraries` includes `tailwind`.
+  tailwindEntryPoint?: string;
 }

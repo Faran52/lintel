@@ -14,6 +14,7 @@ export default defineConfig({
     typescript: 'src/typescript.ts',
     vitest: 'src/vitest.ts',
     html: 'src/html.ts',
+    astro: 'src/astro.ts',
     react: 'src/frameworks/react.ts',
     next: 'src/frameworks/next.ts',
     vue: 'src/frameworks/vue.ts',

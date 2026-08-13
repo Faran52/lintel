@@ -167,6 +167,35 @@ describe('defineConfig', () => {
       .resolves.not.toContain('@html-eslint/require-img-alt');
   });
 
+  /**
+   * A file type, not a framework, so it composes *alongside* one: an Astro site hosting Solid islands needs the solid
+   * layer for its `.tsx` and this layer for its `.astro`, which is why it is a boolean beside `html` rather than a
+   * `framework` value.
+   */
+  it('composes the astro layer on request and not otherwise', async () => {
+    const page = "---\nconst title = 'Home';\n---\n\n<img src='/a.png' />\n";
+
+    await expect(ruleIdsFor(await defineConfig({ astro: true, typescript: true }), page, 'src/pages/index.astro'))
+      .resolves.toContain('astro/jsx-a11y/alt-text');
+    await expect(ruleIdsFor(await defineConfig({ typescript: true }), page, 'src/pages/index.astro'))
+      .resolves.not.toContain('astro/jsx-a11y/alt-text');
+  });
+
+  it('composes the astro layer beside a hosted framework rather than instead of one', async () => {
+    const config = await defineConfig({ astro: true, framework: 'solid', typescript: true });
+    const rules = config.flatMap((entry) => {
+      return Object.keys(entry.rules ?? {});
+    });
+
+    // Both sets are present: the site's templates and its islands are judged by their own rules.
+    expect(rules.some((rule) => {
+      return rule.startsWith('astro/');
+    })).toBe(true);
+    expect(rules.some((rule) => {
+      return rule.startsWith('solid/');
+    })).toBe(true);
+  });
+
   it('passes the base options through under the names base already uses', async () => {
     const config = await defineConfig({
       framework: 'react',
