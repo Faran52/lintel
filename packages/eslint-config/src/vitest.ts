@@ -11,6 +11,18 @@ const TEST_FILES = [`**/*.{test,spec}.{${SCRIPT_EXTENSIONS}}`];
 export const vitest = (): Layer => {
   return [
     { ...presetOf(vitestPlugin.configs.recommended, 'vitest/recommended')[0], files: TEST_FILES },
+    {
+      name: '@linteljs/vitest',
+      files: TEST_FILES,
+      rules: {
+        /**
+         * Vitest's `expect(actual, message)` takes a second argument naming what the assertion means, which Jest has
+         * no equivalent for and which the rule's default of one argument reports. Raised rather than turned off, so a
+         * third argument is still a mistake. This is the runner's own documented signature, not a project's licence.
+         */
+        'vitest/valid-expect': ['error', { maxArgs: 2 }],
+      },
+    },
   ];
 };
 

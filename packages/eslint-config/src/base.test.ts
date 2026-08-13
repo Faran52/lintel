@@ -1,4 +1,7 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import process from 'node:process';
 
 import { ruleIdsFor, ruleIdsForFile } from '@mocks/lintText';
 import importX from 'eslint-plugin-import-x';
@@ -7,6 +10,7 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from 'vitest';
 
 import base from './base';
@@ -71,15 +75,45 @@ describe('base: stylistic', () => {
 // `ignores` has to reach ESLint as a global ignore entry, not another `files` scope.
 describe('base: ignores', () => {
   const doubleQuoted = 'export const value = "x";\n';
-  const built = 'dist/bundle.js';
+  /**
+   * Not a `dist/` path: `base()` also ignores whatever this repository's own `.gitignore` covers, and that includes
+   * `dist`, so a built path is no longer the "nothing covers this" case. `built` below is what the `ignores` option is
+   * asked about, and it has to be a path git does not already ignore for the two assertions to be about the option.
+   */
+  const built = 'src/generated/bundle.js';
 
   it('lints a path no ignore covers', async () => {
     await expect(ruleIdsFor(base(), doubleQuoted, built)).resolves.toContain('@stylistic/quotes');
   });
 
   it('reports nothing under a path the ignore list covers', async () => {
-    await expect(ruleIdsFor(base({ ignores: ['dist/**'] }), doubleQuoted, built))
+    await expect(ruleIdsFor(base({ ignores: ['src/generated/**'] }), doubleQuoted, built))
       .resolves.not.toContain('@stylistic/quotes');
+  });
+
+  // The other half: what git ignores, ESLint ignores, without the project repeating it in `ignores`.
+  it('reports nothing under a path only .gitignore covers', async () => {
+    await expect(ruleIdsFor(base(), doubleQuoted, 'dist/bundle.js'))
+      .resolves.not.toContain('@stylistic/quotes');
+  });
+
+  // A project need not have one, and a missing file is not an error: there is simply nothing to add.
+  it('still builds a config where there is no .gitignore to read', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'lintel-nogit-'));
+    const spy = vi.spyOn(process, 'cwd').mockReturnValue(root);
+
+    try {
+      const gitignoreEntries = base().filter((entry) => {
+        return entry.name === '@linteljs/base/gitignore';
+      });
+
+      expect(gitignoreEntries).toEqual([]);
+      await expect(ruleIdsFor(base(), doubleQuoted, built)).resolves.toContain('@stylistic/quotes');
+    }
+    finally {
+      spy.mockRestore();
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });
 

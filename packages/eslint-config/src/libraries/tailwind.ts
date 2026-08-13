@@ -9,16 +9,17 @@ const TAILWIND_FILES = [`**/*.{${SCRIPT_EXTENSIONS},vue,svelte}`];
 
 /**
  * A library layer for the class strings themselves: order, duplicates and conflicts, none of which the build or
- * stylelint can see. With no `entryPoint` setting the plugin resolves against Tailwind's default theme, exactly
- * a fresh scaffold; a project that customises its theme should append a block setting
- * `settings['better-tailwindcss'].entryPoint` to its CSS entry.
+ * stylelint can see. `entryPoint` names the CSS file holding `@import "tailwindcss"`, which is how the plugin reads
+ * the project's own theme; without it every rule that reasons about the theme reports a custom token as unknown and
+ * warns once per class string. Passed rather than appended by the project, so a generated config needs no override.
  */
-export const tailwind = (): Layer => {
+export const tailwind = (entryPoint?: string): Layer => {
   return [
     ...presetOf(betterTailwindcss.configs.recommended, 'better-tailwindcss/recommended', TAILWIND_FILES),
     {
       name: '@linteljs/tailwind',
       files: TAILWIND_FILES,
+      ...(entryPoint === undefined ? {} : { settings: { 'better-tailwindcss': { entryPoint } } }),
       rules: {
         // A class the theme does not know is usually the project's own CSS, and without a per-project
         // entryPoint the rule cannot tell: create-vite's own template classes trip it. Measured, not assumed.

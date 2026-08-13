@@ -1,5 +1,9 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
 import lintel from '@linteljs/eslint-plugin';
 import stylistic from '@stylistic/eslint-plugin';
+import { includeIgnoreFile } from 'eslint/config';
 import checkFile from 'eslint-plugin-check-file';
 import importX from 'eslint-plugin-import-x';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
@@ -18,6 +22,25 @@ import type { BaseOptions, Layer } from './types';
 // Limit presets to script parsers: Angular markup crashes `@stylistic/indent` and is owned by `angular()`.
 const SCRIPT_FILES = [`**/*.{${SCRIPT_EXTENSIONS},vue,svelte}`];
 
+/**
+ * Whatever the project already ignores in git, ESLint ignores too. Flat config reads no `.gitignore` of its own, so
+ * every build output a project produces had to be repeated in `ignores` or it got linted: a real repo with a second
+ * output directory was linting its own generated files, and the entries this package hardcodes (`dist/**`,
+ * `coverage/**`) only ever covered the outputs it could guess. `includeIgnoreFile` is ESLint's own converter, so the
+ * gitignore semantics a hand-written glob gets wrong (negation, anchoring, directory-only patterns) are not this
+ * package's to reimplement.
+ *
+ * Read from the working directory, which is where `eslint .` runs; absent, there is nothing to add. `process.cwd()`
+ * off the global rather than a named import from `node:process`, matching `frameworks/next.ts`: a named import is a
+ * static binding that a test cannot replace, and resolving from this file is wrong anyway, since it lives inside
+ * `node_modules`.
+ */
+const gitignored = (): Layer => {
+  const path = join(process.cwd(), '.gitignore');
+
+  return existsSync(path) ? [includeIgnoreFile(path, '@linteljs/base/gitignore')] : [];
+};
+
 // Nothing here is type-aware, so `base` alone works on a plain JavaScript repository.
 export const base = (options: BaseOptions = {}): Layer => {
   const {
@@ -29,12 +52,31 @@ export const base = (options: BaseOptions = {}): Layer => {
     resolver,
   } = options;
 
-  // Keep import-x's parser settings so `.cts` and `.mts` cycles are checked.
-  const importSettings: Linter.Config['settings'] = resolver?.project
-    ? { ...importX.flatConfigs.typescript.settings, 'import-x/resolver': { typescript: { project: resolver.project } } }
-    : importX.flatConfigs.typescript.settings;
+  /**
+   * Keep import-x's parser settings so `.cts` and `.mts` cycles are checked, and try a declaration file in addition to
+   * whatever a package's `exports` map resolves to.
+   *
+   * `conditionNames` is **not** set by default, and reordering it is not a safe default. Putting `import` ahead of
+   * `types` does let a wildcard `exports` map resolve (`@modelcontextprotocol/sdk` maps `"./*"` to both `./dist/esm/*`
+   * and `./dist/esm/*.d.ts`, so `types` alone yields a `server/mcp.js.d.ts` that does not exist), but it also makes
+   * `react-native` resolve to its Flow-typed `index.js` instead of `index.d.ts`, which import-x cannot parse. Measured:
+   * that reordering took a generated React Native project from a clean gate to 127 findings, because the parse failures
+   * also stopped `eslint --fix` and left 111 autofixable ones behind. A project whose dependencies need the other order
+   * asks for it through `resolver.conditionNames`.
+   */
+  const importSettings: Linter.Config['settings'] = {
+    ...importX.flatConfigs.typescript.settings,
+    'import-x/resolver': {
+      typescript: {
+        alwaysTryTypes: true,
+        ...(resolver?.project === undefined ? {} : { project: resolver.project }),
+        ...(resolver?.conditionNames === undefined ? {} : { conditionNames: resolver.conditionNames }),
+      },
+    },
+  };
 
   return [
+    ...gitignored(),
     ...(ignores ? [{ name: '@linteljs/base/ignores', ignores }] : []),
 
     { ...presetOf(importX.flatConfigs.typescript, 'import-x/typescript')[0], settings: importSettings },
@@ -93,6 +135,9 @@ export const base = (options: BaseOptions = {}): Layer => {
         'import-x/first': 'error',
         'import-x/newline-after-import': 'error',
         'import-x/no-cycle': 'error',
+        // Not framework-specific, and `eslint-config-next` was the only thing enabling it before: a default export with
+        // no name is what `lint-staged.config.js` and every emitted config avoid, so the rule belongs to every target.
+        'import-x/no-anonymous-default-export': 'error',
 
         'simple-import-sort/imports': ['error', { groups: buildGroups(aliases, frameworkGroup) }],
         'simple-import-sort/exports': 'error',
