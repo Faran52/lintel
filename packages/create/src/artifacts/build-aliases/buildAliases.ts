@@ -29,6 +29,8 @@ export const buildAliases = (answers: Answers): AliasMap => {
     ...target.extraAliases,
     '@config/*': './src/config/*',
     ...(hasTests(answers) ? { '@mocks/*': './__mocks__/*' } : {}),
+    // A project's own, last so the standard set reads first and a project can restate one of them deliberately.
+    ...answers.aliases,
   };
 
   // Filtered at the end, not spread conditionally, to keep the order above intact.

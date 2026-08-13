@@ -27,6 +27,7 @@ import { parsePackageJson } from '../../artifacts/package-json/emitPackageJson';
 import {
   type Agent,
   type Answers,
+  type Browser,
   DEFAULT_ANSWERS,
   type Library,
   type PackageManager,
@@ -60,6 +61,7 @@ interface AnswerOverrides {
   libraries?: Library[];
   agents?: Agent[];
   plugins?: Plugin[];
+  browsers?: Browser[];
 }
 
 const answersFor = (overrides: AnswerOverrides): Answers => {
@@ -336,8 +338,20 @@ describe('generated write safety', () => {
 // The 100% thresholds are measured over exactly the code somebody wrote: what never counts, and what ships a test on
 // day one.
 describe('coverage surface', () => {
+  /**
+   * A birth run, because that is the only run that writes this file: `vitest.config.ts` is the project's once it
+   * exists, so a plain `generate` would answer whatever the previous call in this test left behind rather than what
+   * the target being asked about emits.
+   */
   const vitestConfig = async (overrides: AnswerOverrides): Promise<string> => {
-    await generate(overrides);
+    await runPipeline({
+      name: 'demo-app',
+      cwd,
+      answers: answersFor(overrides),
+      skip: ['scaffold', 'install'],
+      fresh: true,
+    });
+
     return await readFile(join(cwd, 'vitest.config.ts'), 'utf8');
   };
 
@@ -393,15 +407,70 @@ describe('coverage surface', () => {
   // Both transforms rewrite every component and leave one branch no test can reach; left on, the 100% branch threshold
   // is unreachable in any React or Solid project.
   it('keeps the build-time transforms out of the test run', async () => {
-    await generate({});
+    const viteConfig = async (overrides: AnswerOverrides): Promise<string> => {
+      await runPipeline({
+        name: 'demo-app',
+        cwd,
+        answers: answersFor(overrides),
+        skip: ['scaffold', 'install'],
+        fresh: true,
+      });
 
-    expect(await readFile(join(cwd, 'vite.config.ts'), 'utf8'))
+      return await readFile(join(cwd, 'vite.config.ts'), 'utf8');
+    };
+
+    expect(await viteConfig({}))
       .toContain('...(process.env.VITEST === undefined ? [babel(');
-
-    await generate({ target: 'solid' });
-
-    expect(await readFile(join(cwd, 'vite.config.ts'), 'utf8'))
+    expect(await viteConfig({ target: 'solid' }))
       .toContain('solid({ hot: process.env.VITEST === undefined })');
+  });
+});
+
+/**
+ * The build configs are the project's after the first write, which is what a migration onto this standard depends on:
+ * an extension building one IIFE bundle per content script, or a project with a second build mode, has a
+ * `vite.config.ts` that no emitted default can reproduce. Both reference repos hit this, and the emitted vitest
+ * excludes are the same argument again, naming entry points this CLI guessed rather than the ones a project has.
+ */
+describe('build configs a project already owns', () => {
+  const OWN_VITE = '// hand-written: three IIFE bundles\nexport default {};\n';
+  const OWN_VITEST = "// hand-written: excludes this project's own entry points\nexport default {};\n";
+
+  it('leaves them alone when the run did not scaffold', async () => {
+    await writeFile(join(cwd, 'vite.config.ts'), OWN_VITE, 'utf8');
+    await writeFile(join(cwd, 'vitest.config.ts'), OWN_VITEST, 'utf8');
+
+    const written = await generate({});
+
+    expect(written).not.toContain('vite.config.ts');
+    expect(written).not.toContain('vitest.config.ts');
+    await expect(readFile(join(cwd, 'vite.config.ts'), 'utf8')).resolves.toBe(OWN_VITE);
+    await expect(readFile(join(cwd, 'vitest.config.ts'), 'utf8')).resolves.toBe(OWN_VITEST);
+  });
+
+  // The other half: at birth the file on disk is the scaffolder's default, not the project's, so this standard's
+  // version has to land over it. Preserving there would ship every new project Vite's own config instead.
+  it('replaces the scaffolder default on a birth run', async () => {
+    await writeFile(join(cwd, 'vite.config.ts'), '// vite scaffolder default\n', 'utf8');
+
+    await runPipeline({
+      name: 'demo-app',
+      cwd,
+      answers: answersFor({}),
+      skip: ['scaffold', 'install'],
+      fresh: true,
+    });
+
+    await expect(readFile(join(cwd, 'vite.config.ts'), 'utf8'))
+      .resolves.toContain('defineConfig');
+  });
+
+  // Absence is still this CLI's to fix, the same way it is for every other preserved file.
+  it('installs them when the project has neither', async () => {
+    const written = await generate({});
+
+    expect(written).toContain('vite.config.ts');
+    expect(written).toContain('vitest.config.ts');
   });
 });
 
@@ -495,6 +564,44 @@ describe('the webextension surfaces', () => {
     expect(manifest).toContain('"name": "demo-app"');
     expect(manifest).toContain('"service_worker": "src/background/index.ts"');
     expect(manifest).not.toMatch(/\{\{/);
+  });
+
+  /**
+   * A project shipping to both stores. The two manifests cannot be one file, because Chrome rejects
+   * `browser_specific_settings` and AMO requires the gecko id, so the build makes one bundle and the packaging step
+   * swaps the manifest into it. The reference repo doing this had no way to say so, and carried both files by hand.
+   */
+  it('writes a second manifest for a project packaged for two stores', async () => {
+    const written: string[] = [];
+
+    await runPipeline({
+      name: 'demo-app',
+      cwd,
+      answers: answersFor({ target: 'webextension', browsers: ['chrome', 'firefox'] }),
+      skip: ['scaffold', 'install'],
+      fresh: true,
+      onWrite: (path) => {
+        written.push(path);
+      },
+    });
+
+    expect(written).toContain('manifest.json');
+    expect(written).toContain('manifest.firefox.json');
+
+    const chrome = await readFile(join(cwd, 'manifest.json'), 'utf8');
+    const firefox = await readFile(join(cwd, 'manifest.firefox.json'), 'utf8');
+
+    // The one field that cannot be shared, in exactly one of the two.
+    expect(chrome).not.toContain('browser_specific_settings');
+    expect(firefox).toContain('browser_specific_settings');
+    // And each spells the background the way its own browser takes it.
+    expect(chrome).toContain('"service_worker"');
+    expect(firefox).toContain('"scripts"');
+  });
+
+  // The default, and the shape every project that ships to one store keeps.
+  it('writes one manifest when the project ships to one store', async () => {
+    expect(await fresh()).not.toContain('manifest.firefox.json');
   });
 
   it('names a service worker that the same run actually wrote', async () => {

@@ -127,6 +127,8 @@ const answersIn = async (cwd: string): Promise<Answers> => {
     agents,
     plugins,
     resolveConditions,
+    aliases,
+    browsers,
   } = await readLintelConfig(cwd);
 
   return {
@@ -142,6 +144,8 @@ const answersIn = async (cwd: string): Promise<Answers> => {
     agents,
     plugins,
     ...(resolveConditions === undefined ? {} : { resolveConditions }),
+    ...(aliases === undefined ? {} : { aliases }),
+    ...(browsers === undefined ? {} : { browsers }),
   };
 };
 

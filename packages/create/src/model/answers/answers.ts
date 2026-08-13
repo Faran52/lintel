@@ -89,6 +89,30 @@ export interface Answers {
    * carried from there into the emitted config, so needing it costs a recorded line rather than an override block.
    */
   resolveConditions?: string[];
+  /**
+   * Aliases this project has beyond the standard set, merged in after it. Never asked, for the same reason
+   * `resolveConditions` is not: it is a fact about a layout rather than a preference, and the ones that exist are the
+   * directories a project grew that no target record could predict.
+   *
+   * It has to be recorded rather than hand-edited into the config, because `eslint.config.js` is emitted in full: a
+   * project that added an alias there lost it on the next `sync`, and the reference repo carrying nine of them could
+   * not adopt the standard without that happening. One line here reaches all three consumers at once, which is the
+   * coupling `emitTsconfig.test.ts` already pins.
+   *
+   * A value ending in `/*` names a directory; one ending in a file names a barrel imported bare, which is what
+   * `'@engine': './src/lib/engine/index.ts'` is. Both are real, so neither shape is enforced here.
+   */
+  aliases?: AliasMap;
+  /**
+   * The browsers this extension is *packaged* for, where that is more than the one its code targets. Absent means
+   * just `browser`, which is every project that ships to one store.
+   *
+   * A separate answer from `browser` because they are separate facts, which a reference repo shipping to both stores
+   * is the proof of: it builds one bundle and swaps the manifest at package time, because the two differ only in
+   * `browser_specific_settings`, which Chrome rejects and AMO requires. So `browser` still decides the background
+   * shape, the ambient types and the starter code, and this decides how many manifests come out.
+   */
+  browsers?: Browser[];
 }
 
 export type AliasMap = Record<string, string>;
@@ -206,6 +230,15 @@ export const surfacesOf = (answers: Answers): Surface[] => {
 
 export const hasSurface = (answers: Answers, surface: Surface): boolean => {
   return surfacesOf(answers).includes(surface);
+};
+
+// The browsers a manifest comes out for. `browser` first, so the primary one keeps writing `manifest.json`.
+export const browsersOf = (answers: Answers): Browser[] => {
+  const extra = (answers.browsers ?? []).filter((browser) => {
+    return browser !== answers.browser;
+  });
+
+  return [answers.browser, ...extra];
 };
 
 // Whether the project has a suite at all; a site that is genuinely vitest-specific keeps the literal instead.

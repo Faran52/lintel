@@ -1,5 +1,45 @@
 # Changelog
 
+## 1.4.0
+
+Four gaps three real migrations found, closed together rather than one per release.
+
+### Added
+
+- **`.github/workflows/ci.yml` is emitted.** Everything this CLI shipped was a gate that nothing ran:
+  a project got `check`, the hooks and the whole lint surface, and no push exercised them. A
+  reference repo renamed `check` and left its workflow calling the old name, so every push failed
+  for two days while the project gated clean locally, and `sync` called it up to date because
+  `.github/` was nobody's. The run command is derived from `buildScripts`, so the workflow cannot
+  name a script `package.json` does not define. A project with more to run adds `deploy.yml` beside
+  it; this file stays owned, which is what makes drift a `sync` diff instead of a red build.
+- **`aliases` in `lintel.config.json`.** A project's own aliases, merged in after the standard set
+  and reaching the ESLint config, the tsconfig paths and the import resolver together. `eslint.config.js`
+  is emitted whole, so an alias added there was gone on the next sync, and a reference repo carrying
+  nine of them could not adopt the standard at all.
+- **`browsers` in `lintel.config.json`.** The stores a project packages for, which is more than one
+  only where it ships to both. A second manifest is emitted per extra browser, named for it, because
+  Chrome rejects `browser_specific_settings` and AMO requires the gecko id: the build makes one
+  bundle and the packaging step swaps the manifest into it. Separate from `browser`, which still
+  decides the background shape, the ambient types and the starter code.
+- `workers/` is named in the extension's `repo-structure.md`, as the fourth realm beside the
+  background, the content script and the page.
+
+### Changed
+
+- **`vite.config.ts`, `vitest.config.ts` and `astro.config.mjs` are birth-only.** What this CLI
+  writes is a starting point every real project outgrows inside its first feature: one reference
+  extension builds an IIFE bundle per content script plus a native messaging host, another builds a
+  second mode for a preview page, and no answer reaches either shape. The emitted vitest excludes are
+  the sharper half of it, naming `src/background/index.ts` and `src/typings/**`, which are this CLI's
+  guesses at a layout rather than the entry points a project has.
+
+  `preserve` alone was not enough, and the first attempt was wrong in a way the pipeline tests
+  caught: a scaffolder writes its own `vite.config.ts` moments before stage 4, so preserving at birth
+  handed a new project Vite's defaults instead of this standard's. `applyArtifact` now takes the
+  freshness the pipeline already computes, which is exactly the question "is this directory
+  scaffolder output". Nothing else changes, because no other preserved file exists yet at birth.
+
 ## 1.3.2
 
 ### Changed

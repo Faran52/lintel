@@ -390,6 +390,73 @@ lib/apis/
 
 Request and response are separate schemas per endpoint, never one shape serving both directions.
 
+## What a project owns, and the four things three migrations changed
+
+Everything below came from migrating three real repositories onto the standard rather than from a
+test. Each is written here because the reasoning is not visible at the call site.
+
+**The build configs are birth-only.** `vite.config.ts`, `vitest.config.ts` and `astro.config.mjs`
+carry `preserve`, so `sync` installs them when missing and never touches them again. What this CLI
+writes is a starting point every real project outgrows inside its first feature: one reference
+extension builds an IIFE bundle per content script plus a native messaging host, another builds a
+second mode for a preview page, and neither shape is reachable from any answer. The emitted vitest
+excludes are the sharper half of the argument, because they name `src/background/index.ts` and
+`src/typings/**`, which are this CLI's guesses at a layout, while a project excludes the entry
+points it actually has. Re-emitting flattens that, and reporting it as `changed` invites a
+`--force` that does the flattening.
+
+`preserve` alone was not enough, and the first attempt was wrong in a way the pipeline tests caught:
+a scaffolder writes its own `vite.config.ts` moments before stage 4 runs, so preserving at birth
+handed a new project Vite's defaults instead of this standard's. `applyArtifact` therefore takes the
+`fresh` flag the pipeline already computes, which is exactly the question "is this directory
+scaffolder output". Nothing else changes behaviour, because no other preserved file exists yet at
+birth.
+
+**`.github/workflows/ci.yml` is emitted, and it is the opposite call.** Everything this CLI shipped
+was a gate that nothing ran: a project got `check`, the hooks and the whole lint surface, and no
+push ever exercised them. A reference repo renamed `check` and left its workflow calling the old
+name; every push failed for two days while the project gated clean locally, and `sync` reported it
+fully up to date because `.github/` was nobody's. So this file is owned outright, the command is
+derived from `buildScripts` rather than written out (a workflow cannot name a script `package.json`
+does not define), and a project with more to run adds `deploy.yml` beside it. That split is what
+makes a drifting `ci.yml` a `sync` diff instead of a red build.
+
+**`aliases` and `browsers` are recorded answers, not questions.** Both follow `resolveConditions`:
+facts about a project rather than preferences, discovered after generation and edited into
+`lintel.config.json` by hand. `aliases` exists because `eslint.config.js` is emitted whole, so an
+alias added there was gone on the next sync, and the reference repo carrying nine of them could not
+adopt the standard at all. Recorded, one line reaches the ESLint config, the tsconfig paths and the
+resolver together, which is the coupling `emitTsconfig.test.ts` already pins. `browsers` is separate
+from `browser` because they are separate facts: `browser` decides the background shape, the ambient
+types and the starter code, while `browsers` decides how many manifests come out. A project shipping
+to both stores builds one bundle and swaps the manifest at package time, because the two differ only
+in `browser_specific_settings`, which Chrome rejects and AMO requires.
+
+Both were invisible until `answersIn` in `cli.ts` named them, which is the same failure `surfaces`
+had: the parse accepts the field, everything downstream keeps working on the default, and only a
+generated project shows it. That whitelist is deliberate and each addition is pinned by a test.
+
+**`no-console` stands down under `scripts/`.** A build or packaging script reports to a terminal,
+which is the one place stdout is the output rather than a leftover debug line. Firing there left
+every project turning the rule off for a glob of its own, and each reached for `**/*.js`, which also
+silences a genuine stray in any plain-JS source file. Granting the directory this standard already
+puts scripts in is narrower than what a project writes when the standard declines to say.
+
+**`sonarjs/code-eval` stands down under `__mocks__/`, and it is the only hotspot rule granted
+anywhere.** The distinction is the reason: a defect rule has a clean state a rewrite can reach, and
+a hotspot rule does not. `code-eval`'s message asks a human to confirm the execution is safe, so
+every code path that executes a source string trips it forever. That is what makes it an override
+generator, and the no-overrides rule cannot bite on a rule with nothing to fix.
+
+The case is narrow enough to name exactly: `chrome.devtools.inspectedWindow.eval` hands the
+inspected page a source text and answers its completion value, so a fake of it that does not execute
+is not a fake of it. The reference repo had three rules off over one line, and two of them came back
+on for free once the fixture stopped reaching for `new Function(`return ${expression}`)()` and used
+`node:vm` instead, which is the API whose semantics actually match: the expression is an expression,
+not a function body, and `runInThisContext` evaluates it as one. Only the hotspot survived that, and
+only inside `__mocks__/`, which is where this standard already puts fakes. `no-implied-eval` stays on
+everywhere including there, because `setTimeout('...')` is a defect and no fixture needs it.
+
 ## Renaming a generated agent file, and the orphan it leaves
 
 `GENERATED_AGENT_TARGETS` is the closed list of exact paths `sync --force` may delete, and it is

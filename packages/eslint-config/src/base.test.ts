@@ -129,7 +129,42 @@ describe('base: quality', () => {
   });
 
   it('reports console.log in a .js file too', async () => {
-    await expect(ruleIdsFor(base(), 'console.log(1);\n', 'scripts/tool.js')).resolves.toContain('no-console');
+    await expect(ruleIdsFor(base(), 'console.log(1);\n', 'src/tool.js')).resolves.toContain('no-console');
+  });
+
+  /**
+   * The one place stdout is the product. Every reference repo had turned the rule off for a glob of its own, and each
+   * reached for `**\/*.js`, which silences a genuine stray anywhere in plain-JS source. Granting the directory this
+   * standard already puts scripts in is narrower than what a project writes when the standard declines to say.
+   */
+  /**
+   * A hotspot rule has no clean state: it asks a human to confirm the execution is safe, and a fake of
+   * `inspectedWindow.eval` that does not execute a source string is not a fake of it. Granted in the fixture
+   * directory only, which is where this standard already puts fakes.
+   */
+  it('allows a fixture to execute a source string, and no source file to', async () => {
+    const code = "import { runInThisContext } from 'node:vm';\n\nexport const run = (source: string): unknown => {\n"
+      + '  return runInThisContext(source);\n};\n';
+
+    await expect(ruleIdsFor(base(), code, '__mocks__/chromeFixture.ts'))
+      .resolves.not.toContain('sonarjs/code-eval');
+    await expect(ruleIdsFor(base(), code, 'src/runner.ts'))
+      .resolves.toContain('sonarjs/code-eval');
+  });
+
+  // The grant is one rule wide. A fixture is still ordinary source for everything else base reports.
+  it('grants a fixture nothing beyond that one rule', async () => {
+    await expect(ruleIdsFor(base(), 'console.log(1);\n', '__mocks__/chromeFixture.ts'))
+      .resolves.toContain('no-console');
+  });
+
+  it('allows console in a build script, and nowhere near it', async () => {
+    await expect(ruleIdsFor(base(), 'console.log(1);\n', 'scripts/generateIcons.js'))
+      .resolves.not.toContain('no-console');
+    await expect(ruleIdsFor(base(), 'console.log(1);\n', 'scripts/nested/build.ts'))
+      .resolves.not.toContain('no-console');
+    await expect(ruleIdsFor(base(), 'console.log(1);\n', 'src/scripts/tool.ts'))
+      .resolves.toContain('no-console');
   });
 });
 

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import {
   AGENTS,
+  type AliasMap,
   type Answers,
   BROWSERS,
   HOSTED_FRAMEWORKS,
@@ -38,6 +39,8 @@ interface ConfigObject {
   agents?: JsonValue;
   plugins?: JsonValue;
   resolveConditions?: JsonValue;
+  aliases?: JsonValue;
+  browsers?: JsonValue;
 }
 
 export const CONFIG_PATH = 'lintel.config.json';
@@ -122,10 +125,39 @@ const conditionNames = (value: JsonValue | undefined): string[] => {
   return names;
 };
 
+/**
+ * A project's own aliases. Validated as a shape rather than against a list, the way `resolveConditions` is: the names
+ * are a project's to choose. The sigil is checked because both consumers depend on it, `simple-import-sort` grouping
+ * on it and tsconfig resolving through it, and a bare `engine` key silently sorts as a package instead.
+ */
+const aliasMap = (value: JsonValue | undefined): AliasMap => {
+  if (!isPlainObject(value)) {
+    throw new Error('aliases must be an object');
+  }
+
+  const entries = Object.entries(value);
+
+  for (const [alias, directory] of entries) {
+    if (!alias.startsWith('@') && !alias.startsWith('$')) {
+      throw new Error(`aliases key must start with @ or $: ${alias}`);
+    }
+
+    if (typeof directory !== 'string' || directory === '') {
+      throw new Error(`aliases.${alias} must be a non-empty string`);
+    }
+  }
+
+  return Object.fromEntries(entries.map(([alias, directory]) => {
+    return [alias, String(directory)];
+  }));
+};
+
 const expectedKeys = [
   '$schema',
   'schemaVersion',
   'target',
+  'aliases',
+  'browsers',
   'browser',
   'hostedFramework',
   'surfaces',
@@ -210,6 +242,11 @@ const configFrom = (parsed: ConfigObject): LintelConfig => {
     ...(parsed.resolveConditions === undefined
       ? {}
       : { resolveConditions: conditionNames(parsed.resolveConditions) }),
+    ...(parsed.aliases === undefined ? {} : { aliases: aliasMap(parsed.aliases) }),
+    // More than one only where the project ships to two stores; absent means just `browser`.
+    ...(parsed.browsers === undefined
+      ? {}
+      : { browsers: arrayChoices(parsed.browsers, 'browsers', BROWSERS, 1) }),
     plugins: arrayChoices(parsed.plugins, 'plugins', PLUGINS),
   };
 };

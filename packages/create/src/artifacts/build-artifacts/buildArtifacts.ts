@@ -13,6 +13,7 @@ import {
 } from '../artifact/artifact';
 import { emitAstroConfig } from '../astro-config/emitAstroConfig';
 import { checkerArtifact, setupTestsPath } from '../banned-patterns/checkerArtifact';
+import { emitCiWorkflow } from '../ci-workflow/emitCiWorkflow';
 import { emitEslintConfig } from '../eslint-config/emitEslintConfig';
 import { mergeGitignore } from '../gitignore/mergeGitignore';
 import { mergePnpmWorkspace } from '../pnpm-workspace/mergePnpmWorkspace';
@@ -61,6 +62,8 @@ export const buildArtifacts = (answers: Answers, existingSetup?: string): Artifa
     copied('commitlint.config.js', 'commitlint.config.js'),
     emitted('package', 'tsconfig.json', emitTsconfig(answers)),
     copied('scripts/typecheckStaged.ts', 'scripts/typecheckStaged.ts'),
+    // Stage `standard`, with the rest of the gate: the workflow runs `check`, which the package stage assembles.
+    emitted('standard', '.github/workflows/ci.yml', emitCiWorkflow(answers)),
   ];
 
   // Relaxed projects get ambient type vocabulary; strict projects narrow with guards.
@@ -87,17 +90,28 @@ export const buildArtifacts = (answers: Answers, existingSetup?: string): Artifa
     }));
   }
 
+  /**
+   * The three build configs are birth-only, not emitted every sync. What this CLI writes is a starting point that any
+   * real project outgrows within its first feature: a Firefox extension needs one IIFE bundle per content script and
+   * a native host target, and a project shipping a second build mode adds one. Re-emitting flattens that, and even
+   * reporting it as `changed` invites a `--force` that does the flattening. Two migrations found this the same way,
+   * which is why it is ownership rather than a better default.
+   *
+   * The vitest excludes are the sharper half of the same argument: they name `src/background/index.ts` and
+   * `src/typings/**`, which are this CLI's own layout guesses, and a project excludes the entry points it actually
+   * has. Only the emitted default can be written blind; the maintained version cannot.
+   */
   if (viteConfig !== null) {
-    artifacts.push(emitted('standard', 'vite.config.ts', viteConfig));
+    artifacts.push({ ...emitted('standard', 'vite.config.ts', viteConfig), preserve: true });
   }
 
   // Astro's equivalent, and the only place its Vite options are read from.
   if (astroConfig !== null) {
-    artifacts.push(emitted('standard', 'astro.config.mjs', astroConfig));
+    artifacts.push({ ...emitted('standard', 'astro.config.mjs', astroConfig), preserve: true });
   }
 
   if (vitestConfig !== null) {
-    artifacts.push(emitted('standard', 'vitest.config.ts', vitestConfig));
+    artifacts.push({ ...emitted('standard', 'vitest.config.ts', vitestConfig), preserve: true });
   }
 
   if (hasTests(answers)) {

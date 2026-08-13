@@ -43,10 +43,21 @@ export const writeProjectFile = async (
   }
 };
 
-export const applyArtifact = async (cwd: string, artifact: Artifact): Promise<boolean> => {
+/**
+ * `fresh` says the directory is scaffolder output, which is what decides whether a `preserve` artifact that already
+ * exists is the project's or somebody else's default. The build configs are the case that needs telling apart: a
+ * scaffolder writes its own `vite.config.ts` moments before this runs, so preserving it at birth would hand a new
+ * project Vite's defaults instead of this standard's, while preserving it on every later run is the whole point.
+ * Nothing else is affected, because no other preserved file exists yet at birth.
+ */
+export const applyArtifact = async (
+  cwd: string,
+  artifact: Artifact,
+  fresh = false,
+): Promise<boolean> => {
   const path = join(cwd, artifact.target);
 
-  if (artifact.preserve === true && await entryExists(path)) {
+  if (!fresh && artifact.preserve === true && await entryExists(path)) {
     return false;
   }
 

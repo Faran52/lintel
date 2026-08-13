@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0
+
+No change to the rules. The three versions move together, so this carries the base layer's two new
+file-scoped grants and the four `@linteljs/create` gaps.
+
 ## 1.3.2
 
 No change to the rules. The three versions move together, so this carries the dependency floors and the `sync`

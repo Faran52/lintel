@@ -8,7 +8,7 @@ import { SETUP_TESTS_CANDIDATES } from '../../artifacts/banned-patterns/checkerA
 import { emitManifest } from '../../artifacts/manifest/emitManifest';
 import { emitPackageJson, parsePackageJson } from '../../artifacts/package-json/emitPackageJson';
 import { emitReadme } from '../../artifacts/readme/emitReadme';
-import { hasTests } from '../../model/answers/answers';
+import { browsersOf, hasTests } from '../../model/answers/answers';
 import { CONFIG_PATH, emitLintelConfig } from '../../model/config/lintelConfig';
 import { type Stage, STAGES } from '../../model/stages/stages';
 import {
@@ -107,7 +107,7 @@ const writeArtifacts = async (
       continue;
     }
 
-    if (await applyArtifact(options.cwd, artifact)) {
+    if (await applyArtifact(options.cwd, artifact, isFresh(options))) {
       options.onWrite?.(artifact.target);
     }
   }
@@ -227,10 +227,23 @@ const stageStandard = async (
    * Birth only, and `null` for the eight targets that are not extensions. A manifest becomes the project's own file
    * immediately: its permissions, icons and store metadata are not this CLI's to keep rewriting.
    */
-  const manifest = emitManifest(options.answers, options.name);
+  if (isFresh(options)) {
+    /**
+     * One per browser the project packages for, which is more than one only where it ships to two stores. The primary
+     * keeps `manifest.json`; a second is named for its browser, because the two cannot be one file: Chrome rejects
+     * `browser_specific_settings` and AMO requires it, so the build produces one bundle and the packaging step swaps
+     * the manifest into it.
+     */
+    for (const browser of browsersOf(options.answers)) {
+      const manifest = emitManifest(options.answers, options.name, browser);
+      const target = browser === options.answers.browser
+        ? 'manifest.json'
+        : `manifest.${browser}.json`;
 
-  if (manifest !== null && isFresh(options)) {
-    await write(options, 'manifest.json', manifest);
+      if (manifest !== null) {
+        await write(options, target, manifest);
+      }
+    }
   }
 
   await writeStarterFiles(options);

@@ -137,6 +137,35 @@ describe('alias coupling', () => {
     }
   }
 
+  /**
+   * A project's own, from `lintel.config.json`. The whole point is that they reach the same three consumers the
+   * standard set does: hand-edited into `eslint.config.js` they lasted until the next sync, which is why the
+   * reference repo carrying nine of them could not adopt the standard.
+   */
+  it("carries a project's own aliases through all three consumers", () => {
+    const answers: Answers = {
+      ...DEFAULT_ANSWERS,
+      aliases: { '@engine': './src/lib/engine/index.ts', '@workers/*': './src/workers/*' },
+    };
+    const { paths } = buildTsconfig(answers).compilerOptions;
+    const config = emitEslintConfig(answers);
+
+    expect(paths['@engine']).toEqual(['./src/lib/engine/index.ts']);
+    expect(paths['@workers/*']).toEqual(['./src/workers/*']);
+    expect(buildAliases(answers)['@engine']).toBe('./src/lib/engine/index.ts');
+    expect(config).toContain("'@engine': './src/lib/engine/index.ts',");
+    expect(config).toContain("'@workers/*': './src/workers/*',");
+  });
+
+  // Last in the map, so the standard set still reads first and a restated one is deliberate rather than accidental.
+  it('lets a project restate a standard alias, and keeps the order', () => {
+    const answers: Answers = { ...DEFAULT_ANSWERS, aliases: { '@utils/*': './src/shared/utils/*' } };
+    const aliases = buildAliases(answers);
+
+    expect(aliases['@utils/*']).toBe('./src/shared/utils/*');
+    expect(Object.keys(aliases)[0]).toBe('@components/*');
+  });
+
   it('carries the target-only aliases through all three consumers', () => {
     const answers = answersFor({ target: 'next' });
     const { paths } = buildTsconfig(answers).compilerOptions;

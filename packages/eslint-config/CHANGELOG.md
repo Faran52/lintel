@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.4.0
+
+### Changed
+
+- **`no-console` stands down under `scripts/`.** A build or packaging script reports to a terminal,
+  which is the one place stdout is the output rather than a leftover debug line. Firing there left
+  every project turning the rule off for a glob of its own, and all three reference repos reached for
+  `**/*.js`, which also silences a genuine stray in any plain-JS source file.
+- **`sonarjs/code-eval` stands down under `__mocks__/`, and it is the only hotspot rule granted
+  anywhere.** A defect rule has a clean state a rewrite can reach; a hotspot rule does not, since its
+  message asks a human to confirm the execution is safe and every path that executes a source string
+  trips it forever. `chrome.devtools.inspectedWindow.eval` hands the inspected page a source text and
+  answers its completion value, so a fake of it that does not execute is not a fake of it. A reference
+  repo had three rules off over one line; two came back on once the fixture used `node:vm` rather than
+  `new Function`, which is the API whose semantics match. `no-implied-eval` stays on everywhere,
+  including there.
+
 ## 1.3.2
 
 No change to the layers. The three versions move together, so this carries the dependency floors and the `sync`

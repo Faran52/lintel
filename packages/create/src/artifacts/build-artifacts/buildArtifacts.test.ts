@@ -142,6 +142,25 @@ describe('buildArtifacts', () => {
   });
 
   /**
+   * Birth-only, so a project that grew a real build keeps it. Both extension migrations rewrote `vite.config.ts`
+   * wholesale, one for per-content-script IIFE bundles and a native host, the other for a second build mode, and the
+   * emitted vitest excludes name entry points this CLI guessed rather than the ones a project has. Emitting either on
+   * every sync flattens that, and `preserve` is also what keeps `--force` from doing it.
+   */
+  it('hands the build configs to the project after the first write', () => {
+    expect(artifactFor({}, 'vite.config.ts')?.preserve).toBe(true);
+    expect(artifactFor({}, 'vitest.config.ts')?.preserve).toBe(true);
+    expect(artifactFor({ target: 'astro' }, 'astro.config.mjs')?.preserve).toBe(true);
+  });
+
+  // The lint and package configs are the opposite case: they carry the standard itself, so a release has to reach them.
+  it('keeps emitting the configs that carry the standard', () => {
+    expect(artifactFor({}, 'eslint.config.js')?.preserve).toBeUndefined();
+    expect(artifactFor({}, 'stylelint.config.js')?.preserve).toBeUndefined();
+    expect(artifactFor({}, 'tsconfig.json')?.preserve).toBeUndefined();
+  });
+
+  /**
    * `package.json` and `README.md` stay out: the first is reconciled by the package stage against what a project
    * already declares, and the second is a project's own the moment anyone edits it.
    *

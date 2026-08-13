@@ -311,6 +311,73 @@ describe('parseLintelConfig', () => {
     }).toThrow(new RegExp(message));
   });
 
+  /**
+   * The reason this field exists rather than being hand-edited into `eslint.config.js`: that file is emitted whole,
+   * so an alias added there is gone on the next sync. Recorded here it reaches the config, the tsconfig paths and the
+   * resolver together, which is the coupling `emitTsconfig.test.ts` pins.
+   */
+  it('round-trips a project\'s own aliases, in both shapes', () => {
+    const answers: Answers = {
+      ...DEFAULT_ANSWERS,
+      aliases: { '@engine': './src/lib/engine/index.ts', '@workers/*': './src/workers/*' },
+    };
+
+    expect(parseLintelConfig(emitLintelConfig(answers))).toEqual({
+      $schema: CONFIG_SCHEMA_URL,
+      schemaVersion: 1,
+      ...answers,
+    });
+  });
+
+  // The names are a project's to choose, so the sigil is all that is checked: both consumers key on it, and a bare
+  // `engine` sorts as a package rather than as the project's own.
+  it.each([
+    [{ engine: './src/lib/engine' }, 'must start with @ or \\$'],
+    [{ '@engine': '' }, 'must be a non-empty string'],
+    [{ '@engine': 3 }, 'must be a non-empty string'],
+    [['@engine'], 'aliases must be an object'],
+    ['@engine', 'aliases must be an object'],
+  ])('rejects aliases of %j', (aliases, message) => {
+    expect(() => {
+      return parseLintelConfig(JSON.stringify({
+        $schema: CONFIG_SCHEMA_URL,
+        schemaVersion: 1,
+        ...DEFAULT_ANSWERS,
+        aliases,
+      }));
+    }).toThrow(new RegExp(message));
+  });
+
+  // Separate from `browser`, which still decides the background shape, the ambient types and the starter code.
+  it('round-trips the stores a project packages for', () => {
+    const answers: Answers = {
+      ...DEFAULT_ANSWERS,
+      target: 'webextension',
+      browsers: ['chrome', 'firefox'],
+    };
+
+    expect(parseLintelConfig(emitLintelConfig(answers))).toEqual({
+      $schema: CONFIG_SCHEMA_URL,
+      schemaVersion: 1,
+      ...answers,
+    });
+  });
+
+  it.each([
+    [[], 'must contain at least 1 value'],
+    [['chrome', 'chrome'], 'must not contain duplicate values'],
+    [['safari'], 'must be one of'],
+  ])('rejects browsers of %j', (browsers, message) => {
+    expect(() => {
+      return parseLintelConfig(JSON.stringify({
+        $schema: CONFIG_SCHEMA_URL,
+        schemaVersion: 1,
+        ...DEFAULT_ANSWERS,
+        browsers,
+      }));
+    }).toThrow(new RegExp(message));
+  });
+
   it('rejects malformed JSON', () => {
     expect(() => {
       return parseLintelConfig('{');

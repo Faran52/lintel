@@ -163,6 +163,41 @@ export const base = (options: BaseOptions = {}): Layer => {
       },
     },
 
+    /**
+     * A build or packaging script reports to a terminal, which is the one place stdout is the output rather than a
+     * leftover debug line. `no-console` exists to catch the latter, and firing on the former left every project
+     * turning the rule off for a glob of its own: the reference repos reached for `**\/*.js`, which is far wider than
+     * the case and silences a real stray in any plain-JS source file.
+     *
+     * Scoped to `scripts/`, the directory this standard already puts them in: `checkBannedPatterns.ts` and
+     * `typecheckStaged.ts` ship there, and both already report through the two levels the rule allows everywhere.
+     */
+    {
+      name: '@linteljs/base/scripts',
+      files: [`scripts/**/*.{${SCRIPT_EXTENSIONS}}`],
+      rules: { 'no-console': 'off' },
+    },
+
+    /**
+     * `sonarjs/code-eval` is a security *hotspot*, not a defect rule: its message asks a human to confirm the
+     * execution is safe, and no rewrite satisfies it while a string is still being executed. That makes it the one
+     * shape in this standard with no reachable clean state, which is what turns it into an override generator.
+     *
+     * Granted here and nowhere else, because a fixture standing in for a browser API is the one place executing a
+     * source string is the fixture's whole job: `chrome.devtools.inspectedWindow.eval` hands the page a source text
+     * and answers its completion value, so a fake of it that does not execute is not a fake of it. The reference repo
+     * had turned three rules off over one line; the other two came back on once the fixture stopped reaching for
+     * `new Function` and used `node:vm`, which is the API that actually matches those semantics.
+     *
+     * `no-implied-eval` deliberately stays on even here. It catches `setTimeout('...')` and friends, which is a defect
+     * rather than a hotspot, and no fixture needs it.
+     */
+    {
+      name: '@linteljs/base/fixtures',
+      files: [`__mocks__/**/*.{${SCRIPT_EXTENSIONS}}`],
+      rules: { 'sonarjs/code-eval': 'off' },
+    },
+
     ...buildNaming(naming, folderNaming),
 
   ];

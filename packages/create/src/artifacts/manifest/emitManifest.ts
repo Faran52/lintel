@@ -67,7 +67,16 @@ const backgroundFor = (browser: Browser): ServiceWorker | EventPage => {
     : { service_worker: 'src/background/index.ts', type: 'module' };
 };
 
-export const emitManifest = (answers: Answers, projectName: string): string | null => {
+/**
+ * `browser` is a parameter rather than being read off the answers, because a project shipping to both stores emits
+ * this twice from one set of answers. The two differ only in `browser_specific_settings`, which Chrome rejects and
+ * AMO requires, and in the background shape; everything else is one manifest written twice.
+ */
+export const emitManifest = (
+  answers: Answers,
+  projectName: string,
+  browser: Browser = answers.browser,
+): string | null => {
   if (targetFor(answers).hostsBrowser !== true) {
     return null;
   }
@@ -79,7 +88,7 @@ export const emitManifest = (answers: Answers, projectName: string): string | nu
     name: projectName,
     version: '0.1.0',
     description: `${projectName}, a browser extension.`,
-    ...(answers.browser === 'firefox'
+    ...(browser === 'firefox'
       ? {
           browser_specific_settings: {
             gecko: { id: `${projectName}@example.com`, strict_min_version: '140.0' },
@@ -87,7 +96,7 @@ export const emitManifest = (answers: Answers, projectName: string): string | nu
         }
       : {}),
     ...(hasSurface(answers, 'popup') ? { action: { default_popup: 'index.html' } } : {}),
-    ...(hasSurface(answers, 'background') ? { background: backgroundFor(answers.browser) } : {}),
+    ...(hasSurface(answers, 'background') ? { background: backgroundFor(browser) } : {}),
     /**
      * The devtools page, not the panel. Chrome and Firefox both open this page invisibly when devtools opens, and its
      * only job is to call `devtools.panels.create` with the panel's own page. crx builds a page the manifest names;

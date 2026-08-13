@@ -74,6 +74,12 @@ job is undoing it.
 - Anything shared between a content script and the background worker is a **message contract**, not
   an import: the two never share a realm. Type the message in `lib/model/` and let each side import
   the type only.
+- **`workers/` is for a Web Worker, and only for one.** A worker is a fourth realm beside the
+  background, the content script and the page, so it belongs beside the surfaces rather than under
+  `lib/`: it has its own entry, its own bundle and its own message contract. The rule above still
+  holds inside it, which is that the work itself lives in `lib/` and the file in `workers/` is the
+  adapter that receives a message and calls it. A background worker is not this; that is
+  `background/`, which the manifest names.
 
 ## Direction
 

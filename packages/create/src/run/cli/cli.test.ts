@@ -733,6 +733,32 @@ describe('main: sync', () => {
     expect((await configAt()).surfaces).toEqual(['devtools-panel']);
   });
 
+  /**
+   * The same failure mode as `surfaces` above, and the reason both are pinned here rather than at the emitter: a new
+   * answer is invisible until `answersIn` names it, and everything below that point keeps working on the default. An
+   * alias that survives the parse but not the whitelist is one a project loses on its first sync, which is exactly
+   * what recording it was meant to prevent.
+   */
+  it("keeps a project's own aliases through a sync, in every consumer", async () => {
+    await writeConfig({
+      ...DEFAULT_ANSWERS,
+      aliases: { '@engine': './src/lib/engine/index.ts' },
+      browsers: ['chrome', 'firefox'],
+    });
+
+    await runMain(['sync', '--force'], scripted([]));
+
+    expect(await readFile(join(project, 'eslint.config.js'), 'utf8'))
+      .toContain("'@engine': './src/lib/engine/index.ts',");
+    expect(await readFile(join(project, 'tsconfig.json'), 'utf8'))
+      .toContain('"@engine": [');
+
+    const config = await configAt();
+
+    expect(config.aliases).toEqual({ '@engine': './src/lib/engine/index.ts' });
+    expect(config.browsers).toEqual(['chrome', 'firefox']);
+  });
+
   it('plans an extension from the browser and framework the config recorded', async () => {
     await writeConfig({
       ...DEFAULT_ANSWERS,
