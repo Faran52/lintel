@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.1
+
+### Added
+
+- **`ignores` in `lintel.config.json`.** The other half of the gap `aliases` closed in 1.4.0, found by
+  migrating the third reference repo an hour later: `eslint.config.js` is emitted whole, so an ignore
+  added there is gone on the next sync too.
+
+  Deliberately not the place to name a build output. `base()` already ignores whatever `.gitignore`
+  does, which covers every generated *directory* a project has by definition, and the migration
+  confirmed that handled all but one entry. What is left is the case `.gitignore` cannot express: a
+  generated file that is **committed**, which the repo in question has as a compat-data registry its
+  CI regenerates and diffs. Nothing in `.gitignore` can name it, because the point of it is to be in
+  git.
+
 ## 1.4.0
 
 Four gaps three real migrations found, closed together rather than one per release.

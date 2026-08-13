@@ -378,6 +378,41 @@ describe('parseLintelConfig', () => {
     }).toThrow(new RegExp(message));
   });
 
+  /**
+   * Not for build outputs, which `base()` already covers by reading `.gitignore`. This exists for the one thing that
+   * file cannot name: a generated file the project commits, which a reference repo has as a compat-data registry its
+   * CI regenerates and diffs.
+   */
+  it("round-trips a project's own ignores", () => {
+    const answers: Answers = {
+      ...DEFAULT_ANSWERS,
+      ignores: ['src/lib/compat-data/generatedRegistry.ts'],
+    };
+
+    expect(parseLintelConfig(emitLintelConfig(answers))).toEqual({
+      $schema: CONFIG_SCHEMA_URL,
+      schemaVersion: 1,
+      ...answers,
+    });
+  });
+
+  it.each([
+    [[], 'must be a non-empty array'],
+    [['a', ''], 'must contain only non-empty strings'],
+    [['a', 2], 'must contain only non-empty strings'],
+    [['a', 'a'], 'must not contain duplicate values'],
+    ['a', 'must be a non-empty array'],
+  ])('rejects ignores of %j', (ignores, message) => {
+    expect(() => {
+      return parseLintelConfig(JSON.stringify({
+        $schema: CONFIG_SCHEMA_URL,
+        schemaVersion: 1,
+        ...DEFAULT_ANSWERS,
+        ignores,
+      }));
+    }).toThrow(new RegExp(message));
+  });
+
   it('rejects malformed JSON', () => {
     expect(() => {
       return parseLintelConfig('{');

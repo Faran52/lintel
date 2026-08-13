@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1
+
+No change to the rules. The three versions move together, so this carries the `ignores` answer in
+`@linteljs/create`.
+
 ## 1.4.0
 
 No change to the rules. The three versions move together, so this carries the base layer's two new

@@ -74,6 +74,13 @@
       "minItems": 1,
       "uniqueItems": true
     },
+    "ignores": {
+      "type": "array",
+      "description": "Paths this project lints nothing in, beyond the standard list. Not for build outputs: base() already ignores whatever .gitignore does. This is for what that file cannot name, such as a generated file the project commits.",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
     "aliases": {
       "type": "object",
       "description": "Aliases this project has beyond the standard set, merged in after it. A value ending in /* names a directory; one ending in a file names a barrel imported bare.",

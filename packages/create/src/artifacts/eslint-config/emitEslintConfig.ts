@@ -132,7 +132,12 @@ const optionRows = (answers: Answers): OptionRow[] => {
     rows.push(['resolver', `{ conditionNames: ${arrayLiteral('conditionNames', resolveConditions, 2)} }`]);
   }
 
-  rows.push(['ignores', arrayLiteral('ignores', [...BASE_IGNORES, ...target.ignores])]);
+  // The project's own last, after the shared list and the target's. `base()` already ignores whatever `.gitignore`
+  // does, so what belongs here is only what that file cannot name: a generated file a project commits.
+  rows.push([
+    'ignores',
+    arrayLiteral('ignores', [...BASE_IGNORES, ...target.ignores, ...answers.ignores ?? []]),
+  ]);
   rows.push(['aliases', objectLiteral(Object.entries(buildAliases(answers)), 1)]);
   rows.push(['naming', objectLiteral(Object.entries(target.naming), 1)]);
   rows.push(['folderNaming', objectLiteral(Object.entries(target.folderNaming), 1)]);

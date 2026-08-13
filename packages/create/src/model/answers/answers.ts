@@ -113,6 +113,16 @@ export interface Answers {
    * shape, the ambient types and the starter code, and this decides how many manifests come out.
    */
   browsers?: Browser[];
+  /**
+   * Paths this project lints nothing in, beyond the standard list. Recorded for the same reason `aliases` is: the
+   * emitted `eslint.config.js` is whole, so an entry added there is gone on the next sync.
+   *
+   * Deliberately not the place to name a build output. `base()` already ignores whatever `.gitignore` does, which
+   * covers every generated directory a project has by definition. What is left is the case that file cannot express:
+   * a generated file that is *committed*, which a reference repo has as a compat-data registry its CI regenerates and
+   * diffs. Nothing in `.gitignore` can name it, because the point of it is to be in git.
+   */
+  ignores?: string[];
 }
 
 export type AliasMap = Record<string, string>;

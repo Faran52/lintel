@@ -41,6 +41,7 @@ interface ConfigObject {
   resolveConditions?: JsonValue;
   aliases?: JsonValue;
   browsers?: JsonValue;
+  ignores?: JsonValue;
 }
 
 export const CONFIG_PATH = 'lintel.config.json';
@@ -152,12 +153,37 @@ const aliasMap = (value: JsonValue | undefined): AliasMap => {
   }));
 };
 
+/**
+ * Paths a project lints nothing in. An open vocabulary like `resolveConditions`, so only the shape is checked: a
+ * non-empty list of distinct non-empty strings.
+ */
+const globList = (value: JsonValue | undefined): string[] => {
+  if (!isJsonArray(value) || value.length === 0) {
+    throw new Error('ignores must be a non-empty array');
+  }
+
+  const globs = value.map((item) => {
+    if (typeof item !== 'string' || item === '') {
+      throw new Error('ignores must contain only non-empty strings');
+    }
+
+    return item;
+  });
+
+  if (new Set(globs).size !== globs.length) {
+    throw new Error('ignores must not contain duplicate values');
+  }
+
+  return globs;
+};
+
 const expectedKeys = [
   '$schema',
   'schemaVersion',
   'target',
   'aliases',
   'browsers',
+  'ignores',
   'browser',
   'hostedFramework',
   'surfaces',
@@ -247,6 +273,8 @@ const configFrom = (parsed: ConfigObject): LintelConfig => {
     ...(parsed.browsers === undefined
       ? {}
       : { browsers: arrayChoices(parsed.browsers, 'browsers', BROWSERS, 1) }),
+    // Globs are a project's to choose, so this validates the shape the way `resolveConditions` does.
+    ...(parsed.ignores === undefined ? {} : { ignores: globList(parsed.ignores) }),
     plugins: arrayChoices(parsed.plugins, 'plugins', PLUGINS),
   };
 };

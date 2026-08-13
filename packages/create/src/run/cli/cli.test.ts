@@ -744,12 +744,17 @@ describe('main: sync', () => {
       ...DEFAULT_ANSWERS,
       aliases: { '@engine': './src/lib/engine/index.ts' },
       browsers: ['chrome', 'firefox'],
+      ignores: ['src/lib/compat-data/generatedRegistry.ts'],
     });
 
     await runMain(['sync', '--force'], scripted([]));
 
-    expect(await readFile(join(project, 'eslint.config.js'), 'utf8'))
-      .toContain("'@engine': './src/lib/engine/index.ts',");
+    const eslintConfig = await readFile(join(project, 'eslint.config.js'), 'utf8');
+
+    expect(eslintConfig).toContain("'@engine': './src/lib/engine/index.ts',");
+    // After the shared list, not instead of it: a project adds to the standard rather than replacing it.
+    expect(eslintConfig).toContain("'src/lib/compat-data/generatedRegistry.ts',");
+    expect(eslintConfig).toContain("'coverage/**'");
     expect(await readFile(join(project, 'tsconfig.json'), 'utf8'))
       .toContain('"@engine": [');
 
