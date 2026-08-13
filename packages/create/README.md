@@ -1,5 +1,8 @@
 # @linteljs/create
 
+[![npm](https://img.shields.io/npm/v/@linteljs/create.svg)](https://www.npmjs.com/package/@linteljs/create)
+[![ci](https://github.com/Faran52/linteljs/actions/workflows/ci.yml/badge.svg)](https://github.com/Faran52/linteljs/actions/workflows/ci.yml)
+
 Create a TypeScript project with the framework's own scaffolder, then add the lintel standard: ESLint flat
 config, TypeScript settings, git hooks, test setup, and coding-agent rules.
 

@@ -1,8 +1,7 @@
 # @linteljs/eslint-plugin
 
-[![npm](https://img.shields.io/npm/v/@linteljs/eslint-
-plugin.svg)](https://www.npmjs.com/package/@linteljs/eslint-plugin) [![ci](https://github.com/Faran52/linteljs
-/actions/workflows/ci.yml/badge.svg)](https://github.com/Faran52/linteljs/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@linteljs/eslint-plugin.svg)](https://www.npmjs.com/package/@linteljs/eslint-plugin)
+[![ci](https://github.com/Faran52/linteljs/actions/workflows/ci.yml/badge.svg)](https://github.com/Faran52/linteljs/actions/workflows/ci.yml)
 
 ESLint rules for TypeScript and React code. They cover layout, imports, functions, promises, and declaration
 order.

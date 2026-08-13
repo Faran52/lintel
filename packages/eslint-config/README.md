@@ -1,5 +1,8 @@
 # @linteljs/eslint-config
 
+[![npm](https://img.shields.io/npm/v/@linteljs/eslint-config.svg)](https://www.npmjs.com/package/@linteljs/eslint-config)
+[![ci](https://github.com/Faran52/linteljs/actions/workflows/ci.yml/badge.svg)](https://github.com/Faran52/linteljs/actions/workflows/ci.yml)
+
 Composable ESLint flat-config layers for TypeScript projects. Start with `defineConfig` when the built-in
 layer order fits your project.
 
