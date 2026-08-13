@@ -67,3 +67,27 @@ describe('emitViteConfig', () => {
     expect(configFor({ target: 'vue' }) ?? '').not.toContain('tailwind');
   });
 });
+
+/**
+ * crx derives its inputs from the manifest, so a page the manifest does not name would not be built. A devtools
+ * panel is that page: its devtools page opens it at runtime rather than declaring it.
+ */
+describe('extra rollup inputs', () => {
+  it('names the panel as an input once the devtools surface is answered', () => {
+    const output = emitViteConfig({
+      ...DEFAULT_ANSWERS,
+      target: 'webextension',
+      surfaces: ['devtools-panel'],
+    });
+
+    // The project's own quoting, not JSON's: this file is linted by the config beside it.
+    expect(output).toContain("build: { rollupOptions: { input: { panel: 'panel.html' } } },");
+    expect(output).not.toContain('"panel"');
+  });
+
+  it('names none for the default surfaces, whose pages the manifest already names', () => {
+    const output = emitViteConfig({ ...DEFAULT_ANSWERS, target: 'webextension' });
+
+    expect(output).not.toContain('rollupOptions');
+  });
+});

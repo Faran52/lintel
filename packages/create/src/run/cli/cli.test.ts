@@ -683,6 +683,30 @@ describe('main: sync', () => {
    * `--skip-scaffold` plan from it rather than asking again. The reactivity reference is the visible proof that the
    * hosted framework reached the record.
    */
+  /**
+   * The surfaces the config recorded, not the default pair. `answersIn` rebuilds `Answers` field by field, so a new
+   * answer is dropped silently until it is threaded through there too: this one was, and the plan for a devtools-panel
+   * project came back as a popup-and-background one. Only the end-to-end suite saw it, which is why it is pinned here.
+   */
+  it('emits an extension from the surfaces the config recorded', async () => {
+    await writeConfig({
+      ...DEFAULT_ANSWERS,
+      target: 'webextension',
+      surfaces: ['devtools-panel'],
+    });
+
+    await runMain(['sync', '--force'], scripted([]));
+
+    // The panel's Rollup input, asked for by this surface alone, and reached only if the answer arrived at all.
+    expect(await readFile(join(project, 'vite.config.ts'), 'utf8'))
+      .toContain("input: { panel: 'panel.html' }");
+    // The background entry is not excluded from coverage, because this project has no background entry.
+    expect(await readFile(join(project, 'vitest.config.ts'), 'utf8'))
+      .not.toContain('src/background/index.ts');
+    // And the answer survives the round trip into the config the sync rewrites.
+    expect((await configAt()).surfaces).toEqual(['devtools-panel']);
+  });
+
   it('plans an extension from the browser and framework the config recorded', async () => {
     await writeConfig({
       ...DEFAULT_ANSWERS,

@@ -6,10 +6,10 @@ import { env } from 'node:process';
 import { type Artifact, buildArtifacts } from '../../artifacts';
 import { SETUP_TESTS_CANDIDATES } from '../../artifacts/banned-patterns/checkerArtifact';
 import { mergeGitignore } from '../../artifacts/gitignore/mergeGitignore';
+import { emitManifest } from '../../artifacts/manifest/emitManifest';
 import { emitPackageJson, parsePackageJson } from '../../artifacts/package-json/emitPackageJson';
 import { mergePnpmWorkspace } from '../../artifacts/pnpm-workspace/mergePnpmWorkspace';
 import { emitReadme } from '../../artifacts/readme/emitReadme';
-import { fillSlots } from '../../artifacts/template/template';
 import { hasTests } from '../../model/answers/answers';
 import { CONFIG_PATH, emitLintelConfig } from '../../model/config/lintelConfig';
 import { type Stage, STAGES } from '../../model/stages/stages';
@@ -243,14 +243,14 @@ const stageStandard = async (
   const readme = await readFile(join(ASSETS_ROOT, 'readme/template.md'), 'utf8');
   await write(options, 'README.md', emitReadme(readme, options.name, options.answers));
 
-  // Read off the record rather than named here, so an eighth target is still one entry.
-  const { birthTemplate } = targetFor(options.answers);
+  /**
+   * Birth only, and `null` for the eight targets that are not extensions. A manifest becomes the project's own file
+   * immediately: its permissions, icons and store metadata are not this CLI's to keep rewriting.
+   */
+  const manifest = emitManifest(options.answers, options.name);
 
-  if (birthTemplate !== undefined && isFresh(options)) {
-    const template = await readFile(join(ASSETS_ROOT, birthTemplate.source), 'utf8');
-    const filled = fillSlots(template, { PROJECT_NAME: options.name }, birthTemplate.target);
-
-    await write(options, birthTemplate.target, filled);
+  if (manifest !== null && isFresh(options)) {
+    await write(options, 'manifest.json', manifest);
   }
 
   await writeStarterFiles(options);

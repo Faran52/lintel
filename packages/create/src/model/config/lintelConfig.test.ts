@@ -25,6 +25,8 @@ import {
   LIBRARIES,
   PACKAGE_MANAGERS,
   PLUGINS,
+  SURFACES,
+  surfacesOf,
   TARGET_IDS,
   TESTING_CHOICES,
   TYPE_SAFETY_CHOICES,
@@ -69,6 +71,7 @@ interface LintelConfigSchema {
     typeSafety: SchemaNode;
     agents: SchemaNode;
     plugins: SchemaNode;
+    surfaces: SchemaNode;
   };
 }
 
@@ -85,6 +88,7 @@ interface SchemaFields {
   typeSafety?: SchemaValue;
   agents?: SchemaValue;
   plugins?: SchemaValue;
+  surfaces?: SchemaValue;
   const?: SchemaValue;
   enum?: SchemaValue;
   items?: SchemaValue;
@@ -200,6 +204,7 @@ const schemaFrom = (text: string): LintelConfigSchema => {
       typeSafety: choiceNode(properties, 'typeSafety'),
       agents: { items: choiceNode(objectField(properties, 'agents'), 'items') },
       plugins: { items: choiceNode(objectField(properties, 'plugins'), 'items') },
+      surfaces: { items: choiceNode(objectField(properties, 'surfaces'), 'items') },
     },
   };
 };
@@ -221,9 +226,9 @@ describe('parseLintelConfig', () => {
   });
 
   /**
-   * Both fields arrived after the schema did, so a config written without them still has to parse: an absent `browser`
-   * is the chrome the only extension target used to assume, and an absent `hostedFramework` is the plain-TypeScript
-   * shape every host had.
+   * All three fields arrived after the schema did, so a config written without them still has to parse: an absent
+   * `browser` is the chrome the only extension target used to assume, an absent `hostedFramework` is the
+   * plain-TypeScript shape every host had, and absent `surfaces` is the popup and background pair.
    */
   it('defaults the extension axes when a config predates them', () => {
     const withoutAxes = JSON.stringify({
@@ -243,15 +248,20 @@ describe('parseLintelConfig', () => {
 
     expect(config.browser).toBe('chrome');
     expect(config.hostedFramework).toBeUndefined();
+    // Left absent rather than filled in, so the file keeps saying what its author said.
+    expect(config.surfaces).toBeUndefined();
+    expect(surfacesOf(config)).toEqual(['popup', 'background']);
   });
 
-  it('round-trips both extension axes', () => {
-    const answers = {
+  it('round-trips all three extension axes', () => {
+    // Annotated rather than `as const`: a readonly tuple is not assignable to the mutable list `Answers` declares.
+    const answers: Answers = {
       ...DEFAULT_ANSWERS,
       target: 'webextension',
       browser: 'firefox',
       hostedFramework: 'solid',
-    } as const;
+      surfaces: ['devtools-panel'],
+    };
 
     expect(parseLintelConfig(emitLintelConfig(answers)))
       .toEqual({ $schema: CONFIG_SCHEMA_URL, schemaVersion: 1, ...answers });
@@ -476,5 +486,6 @@ describe('lintel config schemas', () => {
     expect(canonicalSchema.properties.typeSafety.choices).toEqual(TYPE_SAFETY_CHOICES);
     expect(canonicalSchema.properties.agents.items?.choices).toEqual(AGENTS);
     expect(canonicalSchema.properties.plugins.items?.choices).toEqual(PLUGINS);
+    expect(canonicalSchema.properties.surfaces.items?.choices).toEqual(SURFACES);
   });
 });

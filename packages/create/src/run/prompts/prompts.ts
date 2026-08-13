@@ -22,6 +22,9 @@ import {
   PACKAGE_MANAGERS,
   PLUGINS,
   PROJECT_NAME_RULE,
+  type Surface,
+  SURFACES,
+  surfacesOf,
   TARGET_IDS,
   TESTING_CHOICES,
   TYPE_SAFETY_CHOICES,
@@ -90,6 +93,12 @@ const LIBRARY_DESCRIPTIONS: Record<Answers['libraries'][number], Described> = {
 const BROWSER_DESCRIPTIONS: Record<Browser, Described> = {
   chrome: { label: 'Chrome', hint: 'MV3 service worker' },
   firefox: { label: 'Firefox', hint: 'MV3 event page, packaged with web-ext' },
+};
+
+const SURFACE_DESCRIPTIONS: Record<Surface, Described> = {
+  'popup': { label: 'Popup', hint: 'The toolbar button\'s page' },
+  'background': { label: 'Background', hint: 'The service worker or event page' },
+  'devtools-panel': { label: 'DevTools panel', hint: 'A tab inside the browser\'s developer tools' },
 };
 
 // `none` is not a `HostedFramework`, so it is spelled here rather than added to the vocabulary for one prompt.
@@ -271,6 +280,16 @@ export const ask = async (prompter: Prompter, input: AskInput = {}): Promise<Ask
       })
     : DEFAULT_ANSWERS.browser;
 
+  /**
+   * Required, because an extension with no surface is not an extension: it would build to a manifest naming nothing.
+   * Defaults to the pair this target wrote before the question existed.
+   */
+  const surfaces = record.hostsBrowser === true
+    ? await askMulti(prompter, 'Surfaces', SURFACES, surfacesOf(DEFAULT_ANSWERS), true, (choice) => {
+        return SURFACE_DESCRIPTIONS[choice];
+      })
+    : undefined;
+
   const hosted = record.hostsFramework === true
     ? await askChoice(
         prompter,
@@ -327,6 +346,7 @@ export const ask = async (prompter: Prompter, input: AskInput = {}): Promise<Ask
       target,
       browser,
       ...(hosted === 'none' ? {} : { hostedFramework: hosted }),
+      ...(surfaces === undefined ? {} : { surfaces }),
       testing,
       packageManager,
       libraries,

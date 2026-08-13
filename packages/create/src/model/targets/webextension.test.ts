@@ -40,14 +40,11 @@ describe('the browser axis', () => {
    * `crx` builds for both, so what the browser decides is the manifest shape and the ambient types. Its own manifest
    * type carries the `service_worker` and the `scripts` background forms and `browser_specific_settings.gecko`.
    */
-  it.each<[Browser, string, string]>([
-    ['chrome', 'manifest/template.json', 'chrome'],
-    ['firefox', 'manifest/template.firefox.json', 'firefox-webext-browser'],
-  ])('gives %s its own manifest and ambient types', (browser, manifest, types) => {
-    const record = recordFor({ browser });
-
-    expect(record.birthTemplate?.source).toBe(manifest);
-    expect(record.tsconfig.types).toEqual([types]);
+  it.each<[Browser, string]>([
+    ['chrome', 'chrome'],
+    ['firefox', 'firefox-webext-browser'],
+  ])('gives %s its own ambient types', (browser, types) => {
+    expect(recordFor({ browser }).tsconfig.types).toEqual([types]);
   });
 
   it('keeps crx as the bundler for both browsers', () => {
@@ -81,6 +78,69 @@ describe('the browser axis', () => {
       target: 'src/background/onInstalled.test.ts',
       covers: 'src/background/onInstalled.ts',
     });
+  });
+});
+
+describe('the surfaces axis', () => {
+  /**
+   * The default is what this target wrote before the answer existed, so nothing changes for a project generated then.
+   * Asserted as the exact list because the point is that it is a pair, not that it is non-empty.
+   */
+  it('defaults to a popup and a background', () => {
+    const record = recordFor();
+
+    expect(record.starterFiles?.map((file) => {
+      return file.target;
+    })).toEqual(['src/background/index.ts', 'src/background/onInstalled.ts']);
+    expect(record.coverageExclude).toEqual(['src/background/index.ts']);
+    expect(record.viteInputs).toBeUndefined();
+  });
+
+  /**
+   * A devtools panel is two pages: the devtools page the browser opens invisibly, whose only job is to register the
+   * panel, and the panel itself. crx builds the first because the manifest names it, and cannot know about the second,
+   * so the panel needs a Rollup input of its own.
+   */
+  it('ships both devtools pages and gives the panel a build input', () => {
+    const record = recordFor({ surfaces: ['devtools-panel'] });
+    const targets = record.starterFiles?.map((file) => {
+      return file.target;
+    });
+
+    expect(targets).toEqual([
+      'devtools.html',
+      'src/devtools/index.ts',
+      'panel.html',
+      'src/panel/index.ts',
+      'src/panel/renderPanel.ts',
+    ]);
+    expect(record.viteInputs).toEqual({ panel: 'panel.html' });
+  });
+
+  // Same reason the background entry is excluded: a registration call has no branch of its own.
+  it('excludes both entry shells and covers the panel body', () => {
+    const record = recordFor({ surfaces: ['devtools-panel'] });
+
+    expect(record.coverageExclude).toEqual(['src/devtools/index.ts', 'src/panel/index.ts']);
+    expect(record.starterTests).toContainEqual({
+      source: 'starter/webextension/renderPanel.test.ts',
+      target: 'src/panel/renderPanel.test.ts',
+      covers: 'src/panel/renderPanel.ts',
+    });
+  });
+
+  // The devtools registration names a namespace, so it moves with the browser exactly as the background entry does.
+  it.each<[Browser, string]>([
+    ['chrome', 'starter/webextension/devtools.ts'],
+    ['firefox', 'starter/webextension/devtools.firefox.ts'],
+  ])('gives %s the devtools registration in its own namespace', (browser, source) => {
+    expect(recordFor({ browser, surfaces: ['devtools-panel'] }).starterFiles)
+      .toContainEqual({ source, target: 'src/devtools/index.ts' });
+  });
+
+  // A popup's page and entry come from the Vite scaffold, so the surface adds no starter of its own.
+  it('adds no starter for a popup, whose page the scaffold already wrote', () => {
+    expect(recordFor({ surfaces: ['popup'] }).starterFiles).toEqual([]);
   });
 });
 

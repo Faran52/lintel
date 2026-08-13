@@ -46,6 +46,16 @@ export type HostedFramework
     | 'svelte'
     | 'solid';
 
+/**
+ * The places an extension puts UI or code. A surface decides three things at once: what the manifest names, what
+ * starter files exist, and what the build has to have an entry for. `devtools-panel` is two pages rather than one,
+ * because a devtools page's only job is to register the panel the user actually sees.
+ */
+export type Surface
+  = 'popup'
+    | 'background'
+    | 'devtools-panel';
+
 export type Agent = 'claude-code' | 'codex';
 
 export type Plugin = 'ponytail' | 'context7' | 'frontend-design';
@@ -59,6 +69,11 @@ export interface Answers {
    * work without one. Absent means the host's own plain-TypeScript shape.
    */
   hostedFramework?: HostedFramework;
+  /**
+   * Asked only for the extension target. Absent means `popup` and `background`, which is the only shape this CLI wrote
+   * before the answer existed, so a `lintel.config.json` written then still describes its own project.
+   */
+  surfaces?: Surface[];
   testing: Testing;
   packageManager: PackageManager;
   libraries: Library[];
@@ -152,6 +167,11 @@ export const LIBRARIES: Library[] = [
 
 export const BROWSERS: Browser[] = ['chrome', 'firefox'];
 
+export const SURFACES: Surface[] = ['popup', 'background', 'devtools-panel'];
+
+// What the target had before the answer existed, and so what an older config means by saying nothing.
+const DEFAULT_SURFACES: Surface[] = ['popup', 'background'];
+
 export const HOSTED_FRAMEWORKS: HostedFramework[] = [
   'react',
   'vue',
@@ -178,6 +198,14 @@ export const DEFAULT_ANSWERS: Answers = {
 
 export const hasLibrary = (answers: Answers, library: Library): boolean => {
   return answers.libraries.includes(library);
+};
+
+export const surfacesOf = (answers: Answers): Surface[] => {
+  return answers.surfaces ?? DEFAULT_SURFACES;
+};
+
+export const hasSurface = (answers: Answers, surface: Surface): boolean => {
+  return surfacesOf(answers).includes(surface);
 };
 
 // Whether the project has a suite at all; a site that is genuinely vitest-specific keeps the literal instead.

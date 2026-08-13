@@ -6,7 +6,11 @@ import { targetFor } from '../../model/targets';
 
 export const emitViteConfig = (answers: Answers): string | null => {
   // Read off the record, so a target that hosts a framework composes both plugins without this emitter knowing which.
-  const { vite, vitePlugin } = targetFor(answers);
+  const {
+    vite,
+    vitePlugin,
+    viteInputs,
+  } = targetFor(answers);
 
   if (!vite) {
     return null;
@@ -34,12 +38,26 @@ export const emitViteConfig = (answers: Answers): string | null => {
     return `    ${call},\n`;
   }).join('');
 
+  /**
+   * Only where a target asks for one. crx reads its inputs out of the manifest, so this exists for the one page a
+   * manifest cannot name: a devtools panel, opened at runtime rather than declared.
+   */
+  const entries = Object.entries(viteInputs ?? {}).map(([name, page]) => {
+    return `${name}: '${page}'`;
+  }).join(', ');
+
+  // Written in the emitted project's own style rather than through `JSON.stringify`, whose double quotes and quoted
+  // keys are two lint findings in the file it lands in.
+  const inputs = viteInputs === undefined
+    ? ''
+    : `  build: { rollupOptions: { input: { ${entries} } } },\n`;
+
   return `${imports}
 
 export default defineConfig({
   plugins: [
 ${plugins}  ],
-  resolve: { tsconfigPaths: true },
+${inputs}  resolve: { tsconfigPaths: true },
   server: { port: 3000 },
 });
 `;

@@ -60,7 +60,7 @@ describe('ask', () => {
    */
   it('asks the browser and the UI framework for an extension, and records both', async () => {
     const { result, recorded } = await askWith([
-      'demo-app', 'webextension', 'firefox', 'solid',
+      'demo-app', 'webextension', 'firefox', ['popup', 'background'], 'solid',
       undefined, undefined, undefined, undefined, undefined, undefined,
     ]);
 
@@ -73,12 +73,26 @@ describe('ask', () => {
   // `none` is a real answer, not a skipped question: an extension without a framework is the default shape.
   it('records no hosted framework when the answer is none', async () => {
     const { result } = await askWith([
-      'demo-app', 'webextension', 'chrome', 'none',
+      'demo-app', 'webextension', 'chrome', ['popup', 'background'], 'none',
       undefined, undefined, undefined, undefined, undefined, undefined,
     ]);
 
     expect(result.answers.hostedFramework).toBeUndefined();
     expect(result.answers.browser).toBe('chrome');
+  });
+
+  /**
+   * The surfaces answer is recorded only where it was asked, so the eight non-extension targets keep a config with no
+   * key for it rather than one naming a pair that means nothing to them.
+   */
+  it('asks the surfaces for an extension, and records the ones chosen', async () => {
+    const { result, recorded } = await askWith([
+      'demo-app', 'webextension', 'firefox', ['devtools-panel'], 'solid',
+      undefined, undefined, undefined, undefined, undefined, undefined,
+    ]);
+
+    expect(recorded.calls).toContain('Surfaces');
+    expect(result.answers.surfaces).toEqual(['devtools-panel']);
   });
 
   it('asks neither axis on a target that hosts neither', async () => {
@@ -88,6 +102,7 @@ describe('ask', () => {
 
     expect(recorded.calls).not.toContain('Browser');
     expect(recorded.calls).not.toContain('UI framework');
+    expect(recorded.calls).not.toContain('Surfaces');
   });
 
   // No language question on any target: this CLI generates TypeScript only. Angular does have a store slot, unlike

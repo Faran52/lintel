@@ -10,6 +10,7 @@ import {
   LIBRARIES,
   PACKAGE_MANAGERS,
   PLUGINS,
+  SURFACES,
   TARGET_IDS,
   TESTING_CHOICES,
   TYPE_SAFETY_CHOICES,
@@ -28,6 +29,7 @@ interface ConfigObject {
   target?: JsonValue;
   browser?: JsonValue;
   hostedFramework?: JsonValue;
+  surfaces?: JsonValue;
   testing?: JsonValue;
   packageManager?: JsonValue;
   libraries?: JsonValue;
@@ -126,6 +128,7 @@ const expectedKeys = [
   'target',
   'browser',
   'hostedFramework',
+  'surfaces',
   'testing',
   'packageManager',
   'libraries',
@@ -186,14 +189,18 @@ const configFrom = (parsed: ConfigObject): LintelConfig => {
     schemaVersion,
     target: choice(parsed.target, 'target', TARGET_IDS),
     /**
-     * Both default rather than being required, so a config written before they existed still parses: absent `browser`
-     * is the chrome the only extension target used to assume, and absent `hostedFramework` is the plain-TypeScript
-     * shape every host had.
+     * All three default rather than being required, so a config written before they existed still parses: absent
+     * `browser` is the chrome the only extension target used to assume, absent `hostedFramework` is the
+     * plain-TypeScript shape every host had, and absent `surfaces` is the popup and background pair.
      */
     browser: parsed.browser === undefined ? 'chrome' : choice(parsed.browser, 'browser', BROWSERS),
     ...(parsed.hostedFramework === undefined
       ? {}
       : { hostedFramework: choice(parsed.hostedFramework, 'hostedFramework', HOSTED_FRAMEWORKS) }),
+    // Absent means the popup-and-background pair, for the same reason: it is the only shape written before the answer.
+    ...(parsed.surfaces === undefined
+      ? {}
+      : { surfaces: arrayChoices(parsed.surfaces, 'surfaces', SURFACES) }),
     testing: choice(parsed.testing, 'testing', TESTING_CHOICES),
     packageManager: choice(parsed.packageManager, 'packageManager', PACKAGE_MANAGERS),
     libraries: arrayChoices(parsed.libraries, 'libraries', LIBRARIES),

@@ -108,11 +108,17 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
   };
 };
 
+/**
+ * A recorded config, narrowed to the answers this version knows. Field by field rather than a spread, because the
+ * whitelist is the point: `typescript: false` from an older config must not survive into a plan. The cost is that a new
+ * answer has to be added here too, which `surfaces` was not, so a devtools-panel project replanned as a popup one.
+ */
 const answersIn = async (cwd: string): Promise<Answers> => {
   const {
     target,
     browser,
     hostedFramework,
+    surfaces,
     testing,
     packageManager,
     libraries,
@@ -127,6 +133,7 @@ const answersIn = async (cwd: string): Promise<Answers> => {
     target,
     browser,
     ...(hostedFramework === undefined ? {} : { hostedFramework }),
+    ...(surfaces === undefined ? {} : { surfaces }),
     testing,
     packageManager,
     libraries,

@@ -36,6 +36,11 @@
     },
     "browser": { "enum": ["chrome", "firefox"] },
     "hostedFramework": { "enum": ["react", "vue", "svelte", "solid"] },
+    "surfaces": {
+      "type": "array",
+      "items": { "enum": ["popup", "background", "devtools-panel"] },
+      "uniqueItems": true
+    },
     "testing": { "enum": ["vitest", "none"] },
     "packageManager": { "enum": ["pnpm", "npm", "yarn", "bun"] },
     "libraries": {

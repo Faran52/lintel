@@ -173,6 +173,21 @@ const CASES: { label: string; answers: Answers }[] = [
       hostedFramework: 'vue',
     },
   },
+  /**
+   * A devtools-panel extension on Firefox hosting Solid, which is `compatlens`'s shape and the reason the surfaces
+   * axis exists. This is the case that proves crx builds a `devtools_page` from the manifest and the panel from the
+   * Rollup input beside it, neither being a page the popup-and-background default ever produced.
+   */
+  {
+    label: 'webextension devtools panel on firefox hosting solid',
+    answers: {
+      ...DEFAULT_ANSWERS,
+      target: 'webextension',
+      browser: 'firefox',
+      hostedFramework: 'solid',
+      surfaces: ['devtools-panel'],
+    },
+  },
   {
     label: 'webextension on firefox hosting solid',
     answers: {

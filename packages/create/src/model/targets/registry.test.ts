@@ -13,6 +13,7 @@ import {
   BROWSERS,
   DEFAULT_ANSWERS,
   HOSTED_FRAMEWORKS,
+  SURFACES,
   TARGET_IDS,
 } from '../answers/answers';
 
@@ -20,10 +21,24 @@ import { targetFor, TARGETS } from './registry';
 
 import type {
   Answers,
+  Browser,
   Framework,
+  HostedFramework,
+  Surface,
   TargetId,
 } from '../answers/answers';
 import type { TargetRecord } from './record';
+
+/**
+ * Every reachable combination of those answers, labelled so a failure names the combination rather than only the
+ * target. A record that hosts no axis contributes its single default case. Both tests below read this: an asset path
+ * and a layer's plugin list are moved by the same answers.
+ */
+interface Axes {
+  browsers: (Browser | undefined)[];
+  hosted: (HostedFramework | undefined)[];
+  surfaces: (Surface | undefined)[];
+}
 
 // Every record is built from answers now, so a test naming only an id still has to hand over a whole set.
 const recordFor = (target: TargetId): TargetRecord => {
@@ -40,7 +55,6 @@ const assetPathsOf = (target: TargetRecord): string[] => {
     ...(target.starterTests ?? []).map((test) => {
       return test.source;
     }),
-    ...(target.birthTemplate === undefined ? [] : [target.birthTemplate.source]),
     ...(target.testSetup === undefined ? [] : [target.testSetup]),
     ...target.stateRules.map((rule) => {
       return `claude-rules/${rule}`;
@@ -57,26 +71,61 @@ const assetPathsOf = (target: TargetRecord): string[] => {
  * rather than only the target. A record that hosts neither axis contributes its single default case. Both tests below
  * read this: an asset path and a layer's plugin list are moved by the same two answers.
  */
+/**
+ * One case, from the answers that move a record. A surface arrives singly rather than as a set: each contributes
+ * its own files and manifest entries independently, so a combination adds no path one of them does not.
+ */
+const caseFor = (
+  base: Answers,
+  browser: Browser | undefined,
+  hostedFramework: HostedFramework | undefined,
+  surface: Surface | undefined,
+): [string, Answers] => {
+  const answers: Answers = {
+    ...base,
+    ...(browser === undefined ? {} : { browser }),
+    ...(hostedFramework === undefined ? {} : { hostedFramework }),
+    ...(surface === undefined ? {} : { surfaces: [surface] }),
+  };
+  const label = [base.target, browser, hostedFramework, surface].filter(Boolean).join(' on ');
+
+  return [label, answers];
+};
+
+// `undefined` is a case of its own everywhere: not answering is what most projects do, and it is the answer an older
+// config gives. A target with no slot for an axis contributes only that.
+const axesOf = (base: Answers): Axes => {
+  const { hostsBrowser, hostsFramework } = targetFor(base);
+
+  return {
+    browsers: hostsBrowser === true ? BROWSERS : [undefined],
+    hosted: hostsFramework === true ? [undefined, ...HOSTED_FRAMEWORKS] : [undefined],
+    surfaces: hostsBrowser === true ? [undefined, ...SURFACES] : [undefined],
+  };
+};
+
 const axisCases = (): [string, Answers][] => {
-  return TARGET_IDS.flatMap((target) => {
+  const cases: [string, Answers][] = [];
+
+  for (const target of TARGET_IDS) {
     const base: Answers = { ...DEFAULT_ANSWERS, target };
-    const record = targetFor(base);
-    const browsers = record.hostsBrowser === true ? BROWSERS : [undefined];
-    const hosted = record.hostsFramework === true ? [undefined, ...HOSTED_FRAMEWORKS] : [undefined];
+    const {
+      browsers,
+      hosted,
+      surfaces,
+    } = axesOf(base);
 
-    return browsers.flatMap((browser) => {
-      return hosted.map((hostedFramework): [string, Answers] => {
-        const answers: Answers = {
-          ...base,
-          ...(browser === undefined ? {} : { browser }),
-          ...(hostedFramework === undefined ? {} : { hostedFramework }),
-        };
-        const label = [target, browser, hostedFramework].filter(Boolean).join(' on ');
+    // Plain loops rather than a triple `flatMap`, which nests four functions deep and reads as one expression.
+    for (const browser of browsers) {
+      for (const hostedFramework of hosted) {
+        for (const surface of surfaces) {
+          cases.push(caseFor(base, browser, hostedFramework, surface));
+        }
+      }
+    }
+  }
 
-        return [label, answers];
-      });
-    });
-  });
+  return cases;
 };
 
 describe('TARGETS', () => {

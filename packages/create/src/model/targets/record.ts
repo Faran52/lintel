@@ -183,6 +183,12 @@ export interface TargetRecord {
   // Source the scaffolder does not write, copied once at birth (never re-synced) and regardless of the testing answer,
   // since the manifest references it either way.
   starterFiles?: StarterFile[];
+  /**
+   * Extra Rollup inputs, for a page the build has to produce and no config names for it. crx derives its inputs from
+   * the manifest, so this is for a page the manifest does not mention: a devtools panel, which its devtools page opens
+   * at runtime.
+   */
+  viteInputs?: Record<string, string>;
   starterTests?: StarterTest[];
   // Files this generator named against the standard, renamed onto it at birth; Expo is the only user, since every other
   // generator already writes convention-compliant names.
@@ -199,8 +205,6 @@ export interface TargetRecord {
   // project per platform's `resolve.extensions`, one variant never executes and the coverage gate lies.
   testPlatforms?: TestPlatform[];
   // A birth-only template filled with the project name, relative to `assets/`; the extension's `manifest.json` is the
-  // only user, since it stops being lintel's the moment a permission is added.
-  birthTemplate?: { source: string; target: string };
   typecheck: string;
   // A `build` script for a scaffolder that writes none; React Native only, since `eas build` needs a remote account and
   // `expo export` is what proves the app bundles instead.
