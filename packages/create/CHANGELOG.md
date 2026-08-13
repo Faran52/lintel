@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.3.1
+
+### Changed
+
+- The shipped agent rules carry what seventeen starter tests were carrying in comments. The
+  `type-standards.md` this CLI ships says "No comments in test files. The test name carries the
+  meaning", and its own starter tests did not hold to it. Four techniques became rules in
+  `testing.react-native.md`, which is where they belonged: why `react-native` is proxied rather than
+  spread, why a project's own re-export is the mock target, why `Platform.select` needs
+  `resetModules` per platform, and why a `useSyncExternalStore` hook needs all three of its
+  callbacks driven. That file also gains the test renderer's limits, and `testing.vue.md` gains the
+  mount rule the Vue starter was demonstrating. A rule reaches every test a project writes; a
+  comment reached one file.
+
+  The rest folded into test names, which is what the standard asks for. No shipped starter test
+  carries a comment now.
+- `scripts/checkBannedPatterns.ts`, which every generated project receives, iterates with `for-of`
+  rather than `forEach`. Same behaviour: the one place the callback used `return` to skip a line is
+  now `continue`, which is what it always meant.
+
 ## 1.3.0
 
 ### Added

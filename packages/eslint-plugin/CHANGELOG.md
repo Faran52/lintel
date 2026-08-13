@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1
+
+No change to the rules. The three versions move together, so this carries the shipped agent rules and the starter
+tests in `@linteljs/create`.
+
 ## 1.3.0
 
 No change to this package. The three versions move together, so this carries the extension
