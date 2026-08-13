@@ -21,9 +21,12 @@ testing.
 
 ## Layout
 
-A generated project has `manifest.json`, `index.html` as the popup, `src/main.ts` and
-`src/counter.ts` behind it, and `src/background/` holding the service worker. Everything below
-that is where the next surface goes. Create a folder when you have a file for it.
+A generated project has `manifest.json` and the folders for the surfaces it was generated with.
+The default pair is a popup and a background: `index.html` with `src/main.ts` and `src/counter.ts`
+behind it, and `src/background/` holding the service worker. A devtools panel instead brings
+`devtools.html` with `src/devtools/`, and `panel.html` with `src/panel/`. The rest of the tree below
+is where the next surface goes. Create a folder when you have a file for it, and do not keep one for
+a surface this project does not have.
 
 **`manifest.json` is the entry point in both senses.** `@crxjs/vite-plugin` reads it to decide
 what to build, and the browser reads it to decide what to load. A surface that is not declared

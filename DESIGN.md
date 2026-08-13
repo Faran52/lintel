@@ -115,9 +115,10 @@ These are decisions, not omissions. Re-adding any of them needs an argument.
   `repo-structure.webextension.md` describes. The manifest ships with empty `permissions` and
   `host_permissions`: those are the project's security surface, and a template guessing at them is
   how an extension ends up asking for more than it uses.
-- **The extension target has two axes, and neither is a second target.** A `browser`
-  (`chrome`/`firefox`) and an optional hosted UI framework move one record rather than forking it.
-  Both were measured against the two reference projects, `compatlens` and `claude-firefox`.
+- **The extension target has three axes, and none is a second target.** A `browser`
+  (`chrome`/`firefox`), a surface list, and an optional hosted UI framework move one record rather
+  than forking it. All three were measured against the two reference projects, `compatlens` and
+  `claude-firefox`.
 
   The browser decides the manifest shape and the ambient types, **not the bundler**: `crx` builds
   for both, and its own manifest type carries the `service_worker` and the `scripts` background
@@ -131,6 +132,29 @@ These are decisions, not omissions. Re-adding any of them needs an argument.
   requires `temporary`, so the entry, its handler and the handler's test are per browser rather than
   shared. That is not a style preference between two spellings: Chrome's starter under Firefox's
   types lints as findings on an undeclared global, which is how the end-to-end suite found it.
+
+  **The surfaces decide what the extension is.** `popup`, `background` and `devtools-panel`, and the
+  answer drives four things at once: what the manifest names, which starter files exist, what the
+  build needs an input for, and which entry shells coverage excludes. Absent means the popup and
+  background pair, which is the only shape this CLI wrote before the answer existed, so a
+  `lintel.config.json` from then still describes its own project.
+
+  It exists because `compatlens` could not be expressed without it. That extension is a devtools
+  panel and nothing else: no background, no popup, `devtools_page` its only entry. The target assumed
+  a background entry, wrote a starter for it, named it in the manifest and excluded it from coverage,
+  so the closest available answer described a different extension. The alternative was to reshape the
+  project to the tool, which is the wrong direction: a devtools-only extension is a normal extension,
+  not a deviation from one.
+
+  The manifest is therefore **emitted rather than copied from a template**. Two axes reach it and a
+  file per combination would be twelve templates holding one shape between them. It stays birth-only:
+  a real extension's manifest is its permissions, icons and store metadata within a week.
+
+  A panel needs a Rollup input of its own, which is the one thing about this that is not obvious.
+  `crx` derives its inputs from the manifest, and the manifest names the *devtools page*, not the
+  panel: that page's only job is to call `devtools.panels.create` with the panel's URL at runtime.
+  Confirmed against the crx documentation, which says an extra page goes in
+  `build.rollupOptions.input`, and that is what the target's `viteInputs` emits.
 
   The hosted framework decides what a component is, which Vite plugin runs ahead of `crx`, and which
   layer lints it, leaving the manifest and the surface layout alone. It is composed from

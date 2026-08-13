@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- The `webextension` target takes a **surfaces** answer, `popup`, `background` and `devtools-panel`,
+  recorded as `surfaces`. It is the third axis on that one record, and it drives four things at once:
+  what `manifest.json` names, which starter files exist, what the build needs a Rollup input for, and
+  which entry shells the coverage gate excludes. Absent means the popup and background pair, which is
+  the only shape this CLI wrote before the answer existed, so a `lintel.config.json` from then still
+  describes its own project.
+
+  It exists because a devtools-panel extension could not be expressed at all. The target assumed a
+  background entry, wrote a starter for it, named it in the manifest and excluded it from coverage, so
+  an extension that is only a devtools panel had no answer that described it.
+
+  `manifest.json` is now emitted rather than copied from a template, since two axes reach it and a
+  file per combination would be twelve templates holding one shape between them. It is still written
+  at birth only and never re-synced. The two template files are gone, and so is the record's
+  `birthTemplate` field, which nothing else used.
+
+  The panel gets a Rollup input of its own, which is the part that is not obvious: `crx` derives its
+  inputs from the manifest, and the manifest names the devtools *page*, whose only job is to call
+  `devtools.panels.create` with the panel's URL at runtime. Checked against the crx documentation
+  rather than assumed, and covered by an end-to-end case that builds both pages for real.
+
+### Fixed
+
+- A recorded answer that this CLI's own argv path did not know was dropped when replanning. `answersIn`
+  rebuilds `Answers` field by field, deliberately, so an answer an older config carries cannot survive
+  into a plan; the cost is that a new answer has to be listed there too, and `surfaces` was not, so
+  `sync` on a devtools-panel project replanned it as a popup-and-background one. Only the end-to-end
+  suite saw it. Now pinned by a test that reads the emitted `vite.config.ts` back.
+
 ## 1.2.0
 
 ### Added

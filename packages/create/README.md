@@ -72,7 +72,10 @@ fails before writing a file with `Could not parse JSON returned from "npm pack"`
 ## Questions and options
 
 The questionnaire covers project name, framework, testing, package manager, libraries, an optional state
-store, type safety, AI agents, and AI plugins. A target without a store choice does not ask that question.
+store, type safety, AI agents, and AI plugins. A question is asked only where the target has a slot for
+it: a target without a store choice does not ask that one, and the extension target additionally asks
+its browser, its surfaces (popup, background, devtools panel) and the UI framework it hosts, while
+Astro asks the last of those alone.
 `--yes` accepts defaults, including React, Vitest, pnpm, strict type safety, Claude Code, and all three AI
 plugins.
 
