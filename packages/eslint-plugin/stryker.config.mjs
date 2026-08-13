@@ -4,10 +4,14 @@
  * coverage still reporting 100%, because v8 does not distinguish the taken side of `??`. Stryker changes the code
  * and expects the suite to go red, so a surviving mutant is a line no test pins. `pnpm mutation` runs it; reports
  * land in `reports/mutation`.
+ *
+ * `.mjs`, although this package is `type: module` and `.js` would already be ESM: Stryker's config discovery looks for
+ * `stryker.conf.json`, `stryker.config.json` and `stryker.config.mjs`, and nothing else. Renamed to `.js` it is simply
+ * not found, and the run falls back to defaults with no error. The extension is upstream's list, not a redundancy.
  */
 
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
-export default {
+const config = {
   packageManager: 'pnpm',
   testRunner: 'vitest',
   // Named explicitly: pnpm's strict layout keeps the runner out of Stryker's own node_modules, so scanning misses it.
@@ -65,3 +69,5 @@ export default {
   incremental: true,
   incrementalFile: 'node_modules/.cache/stryker-incremental.json',
 };
+
+export default config;

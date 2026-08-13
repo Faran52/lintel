@@ -7,7 +7,7 @@ import base from './packages/eslint-config/src/base';
 import typescript from './packages/eslint-config/src/typescript';
 import vitest from './packages/eslint-config/src/vitest';
 
-export default [
+const config = [
   ...base({
     // DESIGN.md: Ignores
     ignores: [
@@ -101,3 +101,5 @@ export default [
     },
   },
 ];
+
+export default config;
