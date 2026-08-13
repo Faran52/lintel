@@ -21,7 +21,7 @@ export const sharedSlots = (projectName: string, answers: Answers): Record<strin
 
   return {
     PROJECT_NAME: projectName,
-    TARGET_LABEL: targetFor(answers.target).label,
+    TARGET_LABEL: targetFor(answers).label,
     RUN: run,
     CHECK_CHAIN: buildScripts(answers).check,
     TEST_ROWS: testRows(answers, run),

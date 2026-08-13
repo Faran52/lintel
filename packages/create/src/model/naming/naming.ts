@@ -61,6 +61,16 @@ export const NAMING: Record<TargetId, NamingMap> = {
   'vue': sfcNaming('vue'),
   'svelte': sfcNaming('svelte', 'routes'),
   'solid': componentNaming(),
+  /**
+   * `.astro` is the component wherever it sits, the way `.tsx` is on React: `COMPONENT` admits both `Card.astro` and
+   * the lowercase `index.astro` a route file has to be, since it excludes only camelCase. `pages` is the route
+   * directory, so its own `.ts` files are exempt from the module rule the way Next's `app` is.
+   */
+  'astro': {
+    'src/**/*.astro': COMPONENT,
+    ...scriptKeys('pages'),
+    ...DECLARATION_KEY,
+  },
   // Kebab-case, matching `ng generate`'s own spelling; needs no exclusions since `ignoreMiddleExtensions` already
   // reduces `app.spec.ts`/`app.config.ts` to the kebab-case `app`.
   'angular': { 'src/**/*.ts': 'KEBAB_CASE' },
@@ -82,6 +92,8 @@ export const FOLDER_NAMING: Record<TargetId, NamingMap> = {
   'svelte': { 'src/**/': FOLDER_ROUTED },
   'solid': { 'src/**/': FOLDER_ROUTED },
   'angular': { 'src/**/': FOLDER },
+  // Astro routes are files under `src/pages/`, and a dynamic one is `[slug].astro`, so a directory may be one too.
+  'astro': { 'src/**/': FOLDER_ROUTED },
   'webextension': { 'src/**/': FOLDER },
   'react-native': { 'src/**/': FOLDER_ROUTED },
 };

@@ -86,6 +86,8 @@ const TANSTACK_QUERY_BINDINGS: Record<TargetId, string> = {
   'svelte': '@tanstack/svelte-query',
   'solid': '@tanstack/solid-query',
   'angular': '@tanstack/angular-query-experimental',
+  // Whatever framework the site hosts brings its own binding; an Astro island is that framework's component.
+  'astro': '',
   'webextension': '',
   'react-native': '@tanstack/react-query',
 };
@@ -137,8 +139,13 @@ export const buildDependencies = (answers: Answers): Record<string, string> => {
     names.push(TANSTACK_QUERY_BINDINGS[answers.target]);
   }
 
+  const target = targetFor(answers);
+
+  // A hosted framework is not installed by the host's scaffolder, so the record brings it.
+  names.push(...target.dependencies ?? []);
+
   // Vue's slot has no dependency: its scaffold flag has create-vue install Pinia itself.
-  const store = targetFor(answers.target).store;
+  const store = target.store;
 
   if (answers.store && store?.dependency !== undefined) {
     names.push(store.dependency);
@@ -148,7 +155,7 @@ export const buildDependencies = (answers: Answers): Record<string, string> => {
 };
 
 export const buildDevDependencies = (answers: Answers): Record<string, string> => {
-  const target = targetFor(answers.target);
+  const target = targetFor(answers);
 
   const optional: Record<Library, string[]> = {
     'zod': [],

@@ -116,7 +116,7 @@ const writeArtifacts = async (
 };
 
 const stageScaffold = async (options: PipelineOptions): Promise<void> => {
-  const spec = targetFor(options.answers.target).scaffold(options.name, options.answers);
+  const spec = targetFor(options.answers).scaffold(options.name, options.answers);
   const [command, ...args] = scaffoldCommand(options.answers.packageManager, spec);
 
   // The scaffolder creates `<name>/` itself, so this runs one directory above `options.cwd`, the project directory.
@@ -145,13 +145,13 @@ const stagePackage = async (
   await writeArtifacts(options, artifacts, stage);
 
   // Paired with the tsconfig above: rewrites the scaffolder's own source to compile under the flags it just set.
-  await rewriteScaffoldedSource(options.cwd, options.answers.target, options.onWrite);
+  await rewriteScaffoldedSource(options.cwd, options.answers, options.onWrite);
 
   // Not paired with anything: these are defects in the generator's output, not lintel's, so they gate on fresh alone.
   if (isFresh(options)) {
     await repairScaffoldedOutput(
       options.cwd,
-      options.answers.target,
+      options.answers,
       options.onWrite,
       options.onNotice,
     );
@@ -178,7 +178,7 @@ const stagePackage = async (
 
 // Source no scaffolder wrote that the target can't run without; fresh output only, whatever the testing answer.
 const writeStarterFiles = async (options: PipelineOptions): Promise<void> => {
-  const { starterFiles } = targetFor(options.answers.target);
+  const { starterFiles } = targetFor(options.answers);
 
   if (starterFiles === undefined || !isFresh(options)) {
     return;
@@ -192,7 +192,7 @@ const writeStarterFiles = async (options: PipelineOptions): Promise<void> => {
 // Fresh output only, and skipped when the file it covers is absent, so a generator that rearranged its starter costs
 // the example rather than a broken import.
 const writeStarterTests = async (options: PipelineOptions): Promise<void> => {
-  const { starterTests } = targetFor(options.answers.target);
+  const { starterTests } = targetFor(options.answers);
 
   if (starterTests === undefined || !hasTests(options.answers) || !isFresh(options)) {
     return;
@@ -244,7 +244,7 @@ const stageStandard = async (
   await write(options, 'README.md', emitReadme(readme, options.name, options.answers));
 
   // Read off the record rather than named here, so an eighth target is still one entry.
-  const { birthTemplate } = targetFor(options.answers.target);
+  const { birthTemplate } = targetFor(options.answers);
 
   if (birthTemplate !== undefined && isFresh(options)) {
     const template = await readFile(join(ASSETS_ROOT, birthTemplate.source), 'utf8');

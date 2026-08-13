@@ -132,7 +132,7 @@ export const emitVitestConfig = (answers: Answers, setup: string): string | null
     return null;
   }
 
-  const target = targetFor(answers.target);
+  const target = targetFor(answers);
   const include = coverageInclude(target.sfcExtension);
   const exclude = [...SHARED_COVERAGE_EXCLUDE, ...target.coverageExclude ?? []];
 
@@ -162,16 +162,39 @@ ${conditions}${block}
 `;
   }
 
+  /**
+   * A factory instead of `defineConfig`: Astro's `getViteConfig` resolves `astro.config.mjs` and hands the test run the
+   * same Vite config the build uses, which is the only way to reach it when there is no `vite.config.ts` to merge.
+   */
+  const { vitestFactory } = target;
+
+  if (vitestFactory !== undefined) {
+    return `${vitestFactory.imports.join('\n')}
+
+export default ${vitestFactory.call}({
+${block}
+});
+`;
+  }
+
   const { vitestPlugin } = target;
   const pluginImports = vitestPlugin === undefined ? '' : `${vitestPlugin.imports.join('\n')}\n`;
   const plugins = vitestPlugin === undefined
     ? ''
     : `  plugins: [${vitestPlugin.calls.join(', ')}],\n`;
 
+  /**
+   * A standalone config inherits no resolution, so the aliases are declared here: the merge branch above takes them
+   * from `vite.config.ts` and the platform projects declare their own. Without this every alias the CLI writes into
+   * `tsconfig.json` is unresolvable from a test, which on Next is the whole set including `@mocks/*`. Measured on a
+   * real project: 27 of 36 suites failed on the import line alone. Unconditional rather than composed with
+   * `conditions`, since no target reaching here declares any.
+   */
   return `${pluginImports}import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-${plugins}${conditions}${block}
+${plugins}  resolve: { tsconfigPaths: true },
+${block}
 });
 `;
 };

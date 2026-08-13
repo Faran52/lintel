@@ -48,3 +48,83 @@ describe('VERSIONS against the workspace', () => {
     expect(VERSIONS[siblingIn('eslint-config').name]).toBeDefined();
   });
 });
+
+/**
+ * The `catalog:` in `pnpm-workspace.yaml` is the one version of a dependency this workspace installs, so an entry that
+ * appears in both places must not ship a generated project something older than the layers it installs were built
+ * against. Read with a line match rather than a YAML parser: the block is flat `name: range` pairs, and a parser
+ * dependency for eight lines is the tail wagging the dog.
+ */
+const catalogEntries = (): [string, string][] => {
+  const yaml = readFileSync(join(import.meta.dirname, '..', '..', '..', '..', '..', 'pnpm-workspace.yaml'), 'utf8');
+  const lines = yaml.split('\n');
+  const start = lines.indexOf('catalog:');
+
+  if (start === -1) {
+    throw new Error('pnpm-workspace.yaml declares no catalog');
+  }
+
+  const entries: [string, string][] = [];
+
+  // Indented lines belong to the block; the first one starting at column 0 ends it. Line-by-line rather than one
+  // pattern over the whole file, because a regex that spans a block is the shape `sonarjs/slow-regex` reports.
+  for (const line of lines.slice(start + 1)) {
+    const indented = line.startsWith(' ') || line.startsWith('\t');
+
+    if (!indented && line.trim() !== '') {
+      break;
+    }
+
+    const trimmed = line.trim();
+    const separator = trimmed.indexOf(':');
+
+    if (trimmed.startsWith('#') || separator === -1) {
+      continue;
+    }
+
+    const name = trimmed.slice(0, separator).replaceAll("'", '');
+
+    entries.push([name, trimmed.slice(separator + 1).trim()]);
+  }
+
+  return entries;
+};
+
+// Floor of a range, as numbers, so `^10.8.1` and `~10.8.1` compare as 10.8.1 rather than as strings.
+const floorOf = (range: string): number[] => {
+  return range.replace(/^[\^~]/, '').split('.').map(Number);
+};
+
+const atLeast = (range: string, minimum: string): boolean => {
+  const left = floorOf(range);
+  const right = floorOf(minimum);
+
+  return left.every((part, index) => {
+    const other = right[index] ?? 0;
+
+    // Equal so far: keep reading. The first part that differs decides it.
+    return part === other || part > other || left.slice(0, index).some((earlier, at) => {
+      return earlier > (right[at] ?? 0);
+    });
+  });
+};
+
+describe('VERSIONS against the workspace catalog', () => {
+  it('reads a catalog with entries in it, so the assertion below is not vacuous', () => {
+    expect(catalogEntries().length).toBeGreaterThan(0);
+  });
+
+  it('ships nothing older than the version this workspace installs', () => {
+    const stale = catalogEntries()
+      .filter(([name, range]) => {
+        const shipped = VERSIONS[name];
+
+        return shipped !== undefined && !atLeast(shipped, range);
+      })
+      .map(([name, range]) => {
+        return `${name}: VERSIONS has ${String(VERSIONS[name])}, catalog has ${range}`;
+      });
+
+    expect(stale).toEqual([]);
+  });
+});

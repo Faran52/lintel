@@ -29,17 +29,18 @@ const answersFor = (overrides: AnswerOverrides): Answers => {
 /**
  * The emitted config, character for character: the README.md of both this package and the workspace quote it, so an
  * edit here is a documentation change too.
- * `String.raw`, because the folder glob carries backslashes: in an ordinary template literal the
- * emitted `\\[` would collapse to `\[` and the fixture would assert a pattern the emitter never wrote.
+ * An ordinary template literal, not `String.raw`: the emitted file now carries a `String.raw` of its own, and a raw
+ * fixture cannot hold the backticks that tag needs. So the escapes are spelled here instead, where `\\[` is the
+ * literal `\[` the emitter writes and `` \` `` is the backtick it wraps the glob in.
  */
-const CANONICAL_REACT = String.raw`import { defineConfig } from '@linteljs/eslint-config/define-config';
+const CANONICAL_REACT = `import { defineConfig } from '@linteljs/eslint-config/define-config';
 
 const config = await defineConfig({
   framework: 'react',
   typescript: true,
   vitest: true,
   html: true,
-  ignores: ['dist/**', 'coverage/**', '.claude/**', 'plugins/linteljs/**'],
+  ignores: ['dist/**', 'coverage/**', '.claude/**', '.agents/**', 'plugins/linteljs/**'],
   aliases: {
     '@components/*': './src/components/*',
     '@ui/*': './src/components/ui/*',
@@ -59,7 +60,7 @@ const config = await defineConfig({
     'src/**/*.d.ts': '@(+([a-z0-9])*(-+([a-z0-9]))|+([a-z])*([a-zA-Z0-9]))',
   },
   folderNaming: {
-    'src/**/': '@(+([a-z0-9])*(-+([a-z0-9]))|__tests__|\\[*\\]|\\(*\\)|{*})',
+    'src/**/': String.raw\`@(+([a-z0-9])*(-+([a-z0-9]))|__tests__|\\[*\\]|\\(*\\)|{*})\`,
   },
 });
 
@@ -164,6 +165,46 @@ describe('emitEslintConfig', () => {
     expect(emitEslintConfig(answersFor({ libraries: ['zod'] }))).not.toContain('libraries:');
   });
 
+  /**
+   * The path is the scaffolder's, verified per target, and it is what lets the plugin read the project's own theme
+   * rather than Tailwind's defaults.
+   */
+  it.each<[TargetId, string]>([
+    ['react', './src/index.css'],
+    ['next', './src/app/globals.css'],
+    ['vue', './src/assets/main.css'],
+    ['solid', './src/index.css'],
+    ['angular', './src/styles.css'],
+    ['webextension', './src/style.css'],
+    ['react-native', './src/global.css'],
+    // The one path this CLI creates rather than finds: `sv create --template minimal` ships no stylesheet.
+    ['svelte', './src/app.css'],
+  ])('names %s tailwind entry point as its stylesheet', (target, entry) => {
+    expect(emitEslintConfig(answersFor({ target, libraries: ['tailwind'] })))
+      .toContain(`tailwindEntryPoint: '${entry}',`);
+  });
+
+  /**
+   * Recorded rather than asked: a dependency publishing subpaths through a wildcard `exports` map is a fact about the
+   * project, and this is what keeps needing it from costing an override block.
+   */
+  it('emits the resolver conditions a project recorded', () => {
+    const output = emitEslintConfig({
+      ...answersFor({}),
+      resolveConditions: ['import', 'require', 'node', 'default'],
+    });
+
+    expect(output).toContain("resolver: { conditionNames: ['import', 'require', 'node', 'default'] },");
+  });
+
+  it('emits no resolver at all where none was recorded', () => {
+    expect(emitEslintConfig(answersFor({}))).not.toContain('resolver');
+  });
+
+  it('names no tailwind entry point when tailwind was not selected', () => {
+    expect(emitEslintConfig(answersFor({ libraries: ['tanstack-query'] }))).not.toContain('tailwindEntryPoint');
+  });
+
   it('omits the html layer where there is no markup for it to lint', () => {
     // angular-eslint processes templates itself; Next's App Router owns the document.
     expect(emitEslintConfig(answersFor({ target: 'angular' }))).not.toContain('html');
@@ -181,10 +222,21 @@ describe('emitEslintConfig', () => {
     expect(react).not.toContain("'@content/*'");
   });
 
+  // Next's list is the one that runs past `max-len`, so this covers the wrapped form as well as the order.
   it('carries the target ignores on top of the shared ones', () => {
     expect(emitEslintConfig(answersFor({ target: 'next' }))).toContain(
-      "ignores: ['dist/**', 'coverage/**', '.claude/**', 'plugins/linteljs/**', "
-      + "'.next/**', 'out/**', 'next-env.d.ts'],",
+      [
+        '  ignores: [',
+        "    'dist/**',",
+        "    'coverage/**',",
+        "    '.claude/**',",
+        "    '.agents/**',",
+        "    'plugins/linteljs/**',",
+        "    '.next/**',",
+        "    'out/**',",
+        "    'next-env.d.ts',",
+        '  ],',
+      ].join('\n'),
     );
   });
 
@@ -233,7 +285,7 @@ describe('folderNaming', () => {
     const plain = ['vue', 'angular', 'webextension'] as const;
 
     routed.forEach((target) => {
-      expect(emitEslintConfig(answersFor({ target }))).toContain(String.raw`|__tests__|\\[*\\]|`);
+      expect(emitEslintConfig(answersFor({ target }))).toContain(String.raw`|__tests__|\[*\]|`);
     });
     plain.forEach((target) => {
       const emitted = emitEslintConfig(answersFor({ target }));
@@ -243,13 +295,40 @@ describe('folderNaming', () => {
     });
   });
 
-  // `\\[` in the emitted file is the glob's literal `\[`; unescaped it would be `[`, which opens a character class the
-  // project never tested against.
-  it('escapes the glob so the file parses back to the pattern it emitted', () => {
+  /**
+   * A backslash in an ordinary string literal parses back as an escape, so the glob has to reach the file intact.
+   * `String.raw` carries it verbatim, which is why the emitted text equals the pattern rather than a doubled copy of
+   * it: read the tagged literal back and it is the glob the policy declared.
+   */
+  it('emits the glob raw, so the file parses back to the pattern it declared', () => {
     const emitted = emitEslintConfig(answersFor({ target: 'react-native' }));
-    const quoted = /'src\/\*\*\/': ('(?:[^'\\]|\\.)*')/.exec(emitted)?.[1];
+    const tagged = /'src\/\*\*\/': String\.raw`([^`]*)`/.exec(emitted)?.[1];
 
-    expect(quoted).toContain(String.raw`\\[`);
-    expect(JSON.parse(String(quoted).replace(/^'|'$/g, '"'))).toBe(FOLDER_ROUTED);
+    expect(tagged).toBe(FOLDER_ROUTED);
+  });
+});
+
+/**
+ * The emitted list is `BASE_IGNORES` plus the target's own, concatenated without deduplication, so a target repeating
+ * a shared entry writes it twice into a published config. Astro and the extension target both did.
+ */
+describe('ignores', () => {
+  it('never repeats an entry for any target', () => {
+    const duplicated = TARGET_IDS.flatMap((target) => {
+      const emitted = emitEslintConfig(answersFor({ target }));
+      const list = /ignores: (\[[^\]]*\])/s.exec(emitted)?.[1] ?? '[]';
+      const entries = [...list.matchAll(/'([^']+)'/g)].map(([, entry]) => {
+        return entry ?? '';
+      });
+      const seen = entries.filter((entry, index) => {
+        return entries.indexOf(entry) !== index;
+      });
+
+      return seen.map((entry) => {
+        return `${target}: ${entry}`;
+      });
+    });
+
+    expect(duplicated).toEqual([]);
   });
 });

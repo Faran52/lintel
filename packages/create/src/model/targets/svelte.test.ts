@@ -4,13 +4,13 @@ import {
   it,
 } from 'vitest';
 
-import { DEFAULT_ANSWERS } from '../answers/answers';
+import { type Answers, DEFAULT_ANSWERS } from '../answers/answers';
 
 import { svelte } from './svelte';
 import { tabsToSpaces } from './utils/targetUtils';
 
-const transformFor = (path: string): (source: string) => string => {
-  const fix = (svelte.starterFixes ?? []).find((entry) => {
+const transformFor = (path: string, answers: Answers = DEFAULT_ANSWERS): (source: string) => string => {
+  const fix = (svelte(answers).starterFixes ?? []).find((entry) => {
     return entry.path === path;
   });
 
@@ -23,7 +23,7 @@ const transformFor = (path: string): (source: string) => string => {
 
 describe('scaffold', () => {
   it('writes the exact argv for the default answers', () => {
-    expect(svelte.scaffold('demo-app', DEFAULT_ANSWERS)).toEqual({
+    expect(svelte(DEFAULT_ANSWERS).scaffold('demo-app', DEFAULT_ANSWERS)).toEqual({
       kind: 'dlx',
       args: ['sv', 'create', 'demo-app', '--template', 'minimal', '--types', 'ts', '--no-add-ons', '--no-install'],
     });
@@ -72,5 +72,44 @@ describe('starterFixes', () => {
 
   it('wires the page fix straight to tabsToSpaces, with no transform of its own', () => {
     expect(transformFor('src/routes/+page.svelte')).toBe(tabsToSpaces);
+  });
+});
+
+// The layout `sv create --template minimal --types ts` actually writes, tabs and all.
+const SV_LAYOUT = [
+  '<script lang="ts">',
+  "\timport favicon from '$lib/assets/favicon.svg';",
+  '',
+  '\tlet { children } = $props();',
+  '</script>',
+  '',
+  '<svelte:head>',
+  '\t<link rel="icon" href={favicon} />',
+  '</svelte:head>',
+  '',
+  '{@render children()}',
+  '',
+].join('\n');
+
+describe('the tailwind stylesheet import', () => {
+  /**
+   * SvelteKit loads no global CSS by convention, so the import is the only thing that makes the stylesheet this CLI
+   * writes reach the browser. Without it tailwind is installed, configured, and generating nothing.
+   */
+  it('imports the stylesheet from the root layout when tailwind was answered', () => {
+    const output = transformFor(
+      'src/routes/+layout.svelte',
+      { ...DEFAULT_ANSWERS, target: 'svelte', libraries: ['tailwind'] },
+    )(SV_LAYOUT);
+
+    expect(output).toContain("import '../app.css';");
+    // Still typed: the tailwind branch must not replace the annotation the other half of this fix adds.
+    expect(output).toContain('let { children }: { children: Snippet } = $props();');
+  });
+
+  it('leaves the layout without a stylesheet import when tailwind was not answered', () => {
+    const output = transformFor('src/routes/+layout.svelte')(SV_LAYOUT);
+
+    expect(output).not.toContain('app.css');
   });
 });

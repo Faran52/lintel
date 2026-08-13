@@ -12,7 +12,11 @@ import {
 import {
   AGENTS,
   type Answers,
+  type Browser,
+  BROWSERS,
   DEFAULT_ANSWERS,
+  HOSTED_FRAMEWORKS,
+  type HostedFramework,
   isValidProjectName,
   LIBRARIES,
   PACKAGE_MANAGERS,
@@ -81,6 +85,20 @@ const LIBRARY_DESCRIPTIONS: Record<Answers['libraries'][number], Described> = {
   'zod': { label: 'Zod', hint: 'Schema validation and parsing' },
   'tanstack-query': { label: 'TanStack Query', hint: 'Async data fetching and caching' },
   'tailwind': { label: 'Tailwind CSS', hint: 'Utility-first styling' },
+};
+
+const BROWSER_DESCRIPTIONS: Record<Browser, Described> = {
+  chrome: { label: 'Chrome', hint: 'MV3 service worker' },
+  firefox: { label: 'Firefox', hint: 'MV3 event page, packaged with web-ext' },
+};
+
+// `none` is not a `HostedFramework`, so it is spelled here rather than added to the vocabulary for one prompt.
+const HOSTED_FRAMEWORK_DESCRIPTIONS: Record<HostedFramework | 'none', Described> = {
+  none: { label: 'None', hint: 'Plain TypeScript and the DOM' },
+  react: { label: 'React', hint: '' },
+  vue: { label: 'Vue', hint: '' },
+  svelte: { label: 'Svelte', hint: '' },
+  solid: { label: 'Solid', hint: '' },
 };
 
 const TYPE_SAFETY_DESCRIPTIONS: Record<Answers['typeSafety'], Described> = {
@@ -237,10 +255,33 @@ export const ask = async (prompter: Prompter, input: AskInput = {}): Promise<Ask
   const name = input.name ?? await askName(prompter);
 
   const target = await askChoice(prompter, 'Framework', TARGET_IDS, DEFAULT_ANSWERS.target, (id) => {
-    return { label: targetFor(id).label };
+    return { label: targetFor({ ...DEFAULT_ANSWERS, target: id }).label };
   });
 
-  const record = targetFor(target);
+  // Only `label` and `store` are read here, and neither varies by an answer still unasked.
+  const record = targetFor({ ...DEFAULT_ANSWERS, target });
+
+  /**
+   * Both are asked only where the target has the slot, the way the store question already works. A host with no
+   * framework is a real answer rather than a missing one, so `none` is offered rather than the question skipped.
+   */
+  const browser = record.hostsBrowser === true
+    ? await askChoice(prompter, 'Browser', BROWSERS, DEFAULT_ANSWERS.browser, (choice) => {
+        return BROWSER_DESCRIPTIONS[choice];
+      })
+    : DEFAULT_ANSWERS.browser;
+
+  const hosted = record.hostsFramework === true
+    ? await askChoice(
+        prompter,
+        'UI framework',
+        ['none', ...HOSTED_FRAMEWORKS],
+        'none',
+        (choice) => {
+          return HOSTED_FRAMEWORK_DESCRIPTIONS[choice];
+        },
+      )
+    : 'none';
 
   const testing = await askChoice(prompter, 'Testing', TESTING_CHOICES, DEFAULT_ANSWERS.testing, (choice) => {
     return TESTING_DESCRIPTIONS[choice];
@@ -284,6 +325,8 @@ export const ask = async (prompter: Prompter, input: AskInput = {}): Promise<Ask
     name,
     answers: {
       target,
+      browser,
+      ...(hosted === 'none' ? {} : { hostedFramework: hosted }),
       testing,
       packageManager,
       libraries,

@@ -64,7 +64,7 @@ run('tar', ['-xzf', join(smokeDir, tarball)], smokeDir);
 // nowhere else.
 console.log('• running the packed binary');
 
-const help = run(process.execPath, [join(pkgDir, 'bin', 'create-linteljs.mjs'), '--help'], smokeDir);
+const help = run(process.execPath, [join(pkgDir, 'bin', 'create-linteljs.js'), '--help'], smokeDir);
 
 /**
  * Every option `parseCliArgs` accepts, against what `--help` prints. The one that went missing was `--skip`: accepted,

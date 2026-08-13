@@ -664,6 +664,40 @@ describe('main: sync', () => {
     expect(printed).toContain('plugins/linteljs/skills/linteljs/references/svelte-reactivity.md: missing');
   });
 
+  /**
+   * Recorded by hand in the config rather than answered, so the only route it can travel is this one: read back off
+   * disk and written into the emitted config.
+   */
+  it('carries recorded resolver conditions into the emitted config', async () => {
+    await writeConfig({ ...DEFAULT_ANSWERS, resolveConditions: ['import', 'require', 'node', 'default'] });
+
+    await runMain(['sync', '--force'], scripted([]));
+
+    const emitted = await readFile(join(project, 'eslint.config.js'), 'utf8');
+
+    expect(emitted).toContain("resolver: { conditionNames: ['import', 'require', 'node', 'default'] },");
+  });
+
+  /**
+   * Both extension axes have to survive the round trip through the recorded config, since `sync` and
+   * `--skip-scaffold` plan from it rather than asking again. The reactivity reference is the visible proof that the
+   * hosted framework reached the record.
+   */
+  it('plans an extension from the browser and framework the config recorded', async () => {
+    await writeConfig({
+      ...DEFAULT_ANSWERS,
+      target: 'webextension',
+      browser: 'firefox',
+      hostedFramework: 'solid',
+    });
+
+    const asked = scripted([]);
+    const { printed } = await runMain(['sync'], asked);
+
+    expect(asked.calls).toEqual([]);
+    expect(printed).toContain('plugins/linteljs/skills/linteljs/references/solid-reactivity.md: missing');
+  });
+
   it('leaves current config bytes unchanged when forced sync writes an artifact', async () => {
     await generated();
 

@@ -9,9 +9,12 @@ import {
   type Artifact,
   copied,
   emitted,
+  merged,
 } from '../artifact/artifact';
+import { emitAstroConfig } from '../astro-config/emitAstroConfig';
 import { checkerArtifact, setupTestsPath } from '../banned-patterns/checkerArtifact';
 import { emitEslintConfig } from '../eslint-config/emitEslintConfig';
+import { mergeStyleEntry } from '../style-entry/mergeStyleEntry';
 import { emitStylelintConfig } from '../stylelint-config/emitStylelintConfig';
 import { emitTsconfig } from '../tsconfig/emitTsconfig';
 import { emitViteConfig } from '../vite-config/emitViteConfig';
@@ -30,9 +33,10 @@ const setupSources = (answers: Answers, target: TargetRecord): string[] => {
 
 // Excludes merges, template fills and birth-only files. `existingSetup` preserves a project's setup spelling.
 export const buildArtifacts = (answers: Answers, existingSetup?: string): Artifact[] => {
-  const target = targetFor(answers.target);
+  const target = targetFor(answers);
   const setup = setupTestsPath(answers, existingSetup);
   const viteConfig = emitViteConfig(answers);
+  const astroConfig = emitAstroConfig(answers);
   const vitestConfig = emitVitestConfig(answers, setup);
 
   const artifacts: Artifact[] = [
@@ -53,8 +57,18 @@ export const buildArtifacts = (answers: Answers, existingSetup?: string): Artifa
     artifacts.push(copied('src/typings/customTypes.d.ts', 'typings/customTypes.d.ts'));
   }
 
+  // Tailwind generates nothing until a stylesheet imports it, and only create-next-app writes that line itself.
+  if (hasLibrary(answers, 'tailwind') && target.styleEntry !== undefined) {
+    artifacts.push(merged('standard', target.styleEntry, mergeStyleEntry));
+  }
+
   if (viteConfig !== null) {
     artifacts.push(emitted('standard', 'vite.config.ts', viteConfig));
+  }
+
+  // Astro's equivalent, and the only place its Vite options are read from.
+  if (astroConfig !== null) {
+    artifacts.push(emitted('standard', 'astro.config.mjs', astroConfig));
   }
 
   if (vitestConfig !== null) {

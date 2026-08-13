@@ -8,6 +8,7 @@ export type TargetId
     | 'svelte'
     | 'solid'
     | 'angular'
+    | 'astro'
     | 'webextension'
     | 'react-native';
 
@@ -17,7 +18,7 @@ export type PackageManager
     | 'yarn'
     | 'bun';
 
-// Which runner a project gets, and `none` for no suite at all. One runner, all eight targets.
+// Which runner a project gets, and `none` for no suite at all. One runner, every target.
 export type Testing = 'vitest' | 'none';
 
 // Which floor `scripts/checkBannedPatterns.ts` runs: `strict` bans casts, `unknown` outside a narrowing guard,
@@ -29,12 +30,35 @@ export type Library
     | 'tanstack-query'
     | 'tailwind';
 
+/**
+ * Which browser an extension targets. `@crxjs/vite-plugin` builds for both, so this decides the manifest shape (a
+ * service worker against an event page), the ambient types, and whether `web-ext` comes along to run and package it.
+ */
+export type Browser = 'chrome' | 'firefox';
+
+/**
+ * The UI frameworks a host target can render with. Angular brings its own builder and Next is a framework rather than
+ * a library, so neither is hostable; these four are the ones with both a Vite plugin and an Astro integration.
+ */
+export type HostedFramework
+  = 'react'
+    | 'vue'
+    | 'svelte'
+    | 'solid';
+
 export type Agent = 'claude-code' | 'codex';
 
 export type Plugin = 'ponytail' | 'context7' | 'frontend-design';
 
 export interface Answers {
   target: TargetId;
+  // Asked only for the extension target; `chrome` everywhere else, where nothing reads it.
+  browser: Browser;
+  /**
+   * The UI framework a host target renders with, where it hosts one: the extension target and Astro both do, and both
+   * work without one. Absent means the host's own plain-TypeScript shape.
+   */
+  hostedFramework?: HostedFramework;
   testing: Testing;
   packageManager: PackageManager;
   libraries: Library[];
@@ -43,6 +67,13 @@ export interface Answers {
   typeSafety: TypeSafety;
   agents: Agent[];
   plugins: Plugin[];
+  /**
+   * Export-map conditions for the import resolver, in the order it tries them. Never asked: it is not a preference but
+   * a fact about a project's dependencies, discovered the first time one of them publishes subpaths through a wildcard
+   * `exports` map the `types` condition cannot satisfy. Edited into `lintel.config.json` by hand when that happens, and
+   * carried from there into the emitted config, so needing it costs a recorded line rather than an override block.
+   */
+  resolveConditions?: string[];
 }
 
 export type AliasMap = Record<string, string>;
@@ -72,6 +103,7 @@ export type LibraryLayer = 'tanstack-query' | 'tailwind';
 
 export interface ResolverOptions {
   project?: string;
+  conditionNames?: string[];
 }
 
 // What `defineConfig` takes, which is what `artifacts/eslint-config` writes into the call.
@@ -80,7 +112,9 @@ export interface DefineConfigOptions {
   typescript?: boolean;
   vitest?: boolean;
   html?: boolean;
+  astro?: boolean;
   libraries?: LibraryLayer[];
+  tailwindEntryPoint?: string;
   ignores?: string[];
   naming?: NamingMap;
   folderNaming?: NamingMap;
@@ -98,6 +132,7 @@ export const TARGET_IDS: TargetId[] = [
   'svelte',
   'solid',
   'angular',
+  'astro',
   'webextension',
   'react-native',
 ];
@@ -115,12 +150,22 @@ export const LIBRARIES: Library[] = [
   'tailwind',
 ];
 
+export const BROWSERS: Browser[] = ['chrome', 'firefox'];
+
+export const HOSTED_FRAMEWORKS: HostedFramework[] = [
+  'react',
+  'vue',
+  'svelte',
+  'solid',
+];
+
 export const AGENTS: Agent[] = ['claude-code', 'codex'];
 
 export const PLUGINS: Plugin[] = ['ponytail', 'context7', 'frontend-design'];
 
 export const DEFAULT_ANSWERS: Answers = {
   target: 'react',
+  browser: 'chrome',
   testing: 'vitest',
   packageManager: 'pnpm',
   libraries: [],

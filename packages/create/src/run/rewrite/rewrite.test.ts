@@ -17,6 +17,12 @@ import {
 } from 'vitest';
 
 import {
+  type Answers,
+  DEFAULT_ANSWERS,
+  type TargetId,
+} from '../../model/answers/answers';
+
+import {
   guardMountLookups,
   markTypeOnlyImports,
   rewriteScaffoldedSource,
@@ -40,6 +46,11 @@ const scaffold = async (files: Record<string, string>): Promise<void> => {
     await mkdir(join(cwd, path, '..'), { recursive: true });
     await writeFile(join(cwd, path), body, 'utf8');
   }
+};
+
+// A record is built from answers now, so a test naming only a target still hands over a whole set.
+const answersFor = (target: TargetId): Answers => {
+  return { ...DEFAULT_ANSWERS, target };
 };
 
 describe('sourceFiles', () => {
@@ -114,7 +125,7 @@ describe('rewriteScaffoldedSource', () => {
     await writeFile(join(cwd, 'src/main.tsx'), "import App from './App.tsx';\n", 'utf8');
     await writeFile(join(cwd, 'src/nested/keep.ts'), "import { z } from 'zod';\n", 'utf8');
 
-    await rewriteScaffoldedSource(cwd, 'react', (path) => {
+    await rewriteScaffoldedSource(cwd, answersFor('react'), (path) => {
       written.push(path);
     });
 
@@ -130,14 +141,14 @@ describe('rewriteScaffoldedSource', () => {
       'utf8',
     );
 
-    await rewriteScaffoldedSource(cwd, 'angular');
+    await rewriteScaffoldedSource(cwd, answersFor('angular'));
 
     expect(await readFile(join(cwd, 'src/app/app.routes.ts'), 'utf8'))
       .toBe("import { type Routes } from '@angular/router';\n\nimport './guards';\n");
   });
 
   it('treats a project with no src directory as nothing to do', async () => {
-    await expect(rewriteScaffoldedSource(cwd, 'react')).resolves.toBeUndefined();
+    await expect(rewriteScaffoldedSource(cwd, answersFor('react'))).resolves.toBeUndefined();
   });
 });
 
@@ -258,7 +269,7 @@ describe('guardMountLookups', () => {
     await writeFile(join(source, 'main.ts'), PLAIN_ENTRY, 'utf8');
     await writeFile(join(nested, 'dom.ts'), "export const el = document.getElementById('x')!;\n", 'utf8');
 
-    await rewriteScaffoldedSource(cwd, 'webextension');
+    await rewriteScaffoldedSource(cwd, answersFor('webextension'));
 
     expect(await readFile(join(source, 'main.ts'), 'utf8')).toContain('if (!app) {');
     expect(await readFile(join(nested, 'dom.ts'), 'utf8'))

@@ -230,7 +230,7 @@ describe('the emitted checker against the emitted starter code', () => {
   // Everything the pipeline puts on disk that the checker would be handed, at its own path and as its own text: an
   // artifact composed from several sources is only scannable once it has been composed.
   const scannedFor = async (target: TargetId): Promise<{ target: string; text: string }[]> => {
-    const record = targetFor(target);
+    const record = targetFor(answersFor({ target }));
 
     const files = [
       ...buildArtifacts(answersFor({ target, libraries: ['tanstack-query'] })).flatMap((artifact) => {
@@ -377,7 +377,7 @@ describe('the shipped test setup', () => {
   });
 });
 
-// One runner, all eight targets. A project either has a vitest config or has no suite.
+// One runner, every target. A project either has a vitest config or has no suite.
 describe('the test runner', () => {
   it('gives every target with a suite the same vitest config', () => {
     expect(targetsOf({ target: 'react' })).toContain('vitest.config.ts');

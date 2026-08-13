@@ -9,7 +9,7 @@ import { targetFor } from '../../model/targets';
 // Read by tsconfig.paths, base({ aliases }) for import-sort buckets, and the tsconfig resolver.
 // Order is the spine's dependency direction, so a sorted import block reads top-down as the architecture.
 export const buildAliases = (answers: Answers): AliasMap => {
-  const target = targetFor(answers.target);
+  const target = targetFor(answers);
   const omitted = target.omitAliases ?? [];
 
   const all: AliasMap = {

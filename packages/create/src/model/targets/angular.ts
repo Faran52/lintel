@@ -33,6 +33,9 @@ export const angular: TargetRecord = {
    */
   naming: NAMING.angular,
   folderNaming: FOLDER_NAMING.angular,
+  styleEntry: 'src/styles.css',
+  // No vite config of its own, so nothing to contribute; see the field on `TargetRecord`.
+  vitePlugin: { imports: [], calls: [] },
   tsconfig: {
     useDefineForClassFields: false,
     dropsErasableSyntaxOnly: true,

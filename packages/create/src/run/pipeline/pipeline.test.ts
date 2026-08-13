@@ -609,7 +609,9 @@ describe('pnpm-workspace.yaml', () => {
 
     const merged = await readFile(join(cwd, 'pnpm-workspace.yaml'), 'utf8');
 
-    expect(merged).toBe("allowBuilds:\n  'esbuild': true\n");
+    // The curated list survives untouched. The peer block that follows is a separate decision, and this file had none.
+    expect(merged.startsWith("allowBuilds:\n  'esbuild': true\n")).toBe(true);
+    expect(merged).not.toContain('sharp');
   });
 });
 
@@ -670,14 +672,14 @@ const scaffoldFor = (overrides: AnswerOverrides): string[] => {
 
   return scaffoldCommand(
     answers.packageManager,
-    targetFor(answers.target).scaffold('demo-app', answers),
+    targetFor(answers).scaffold('demo-app', answers),
   );
 };
 
 describe('scaffoldCommand', () => {
   it('spells create and dlx per package manager', () => {
     const answers = answersFor({ target: 'svelte' });
-    const svelte = targetFor('svelte').scaffold('demo-app', answers);
+    const svelte = targetFor(answers).scaffold('demo-app', answers);
 
     expect(scaffoldFor({})).toEqual([
       'pnpm', 'create', 'vite', 'demo-app',

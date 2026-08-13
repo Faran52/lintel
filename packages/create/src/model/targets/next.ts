@@ -47,6 +47,9 @@ export const next: TargetRecord = {
     '@server/*': './src/lib/server/*',
     '@content/*': './src/content/*',
   },
+  styleEntry: 'src/app/globals.css',
+  // No vite config of its own, so nothing to contribute; see the field on `TargetRecord`.
+  vitePlugin: { imports: [], calls: [] },
   tsconfig: {
     jsx: 'react-jsx',
     plugins: [{ name: 'next' }],
@@ -69,7 +72,8 @@ export const next: TargetRecord = {
    */
   typecheck: 'next typegen && tsc --noEmit',
   testDevDependencies: ['@testing-library/dom', '@testing-library/react'],
-  devDependencies: [...COMMON_REACT_PLUGINS, 'eslint-config-next'],
+  // The plugin alone, not `eslint-config-next`; `frameworks/next.ts` says why.
+  devDependencies: [...COMMON_REACT_PLUGINS, '@next/eslint-plugin-next'],
   allowBuilds: [],
   stateRules: ['react-state.md', 'hooks-order.md'],
   routerMocks: true,

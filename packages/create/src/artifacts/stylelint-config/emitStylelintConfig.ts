@@ -54,7 +54,7 @@ export const emitStylelintConfig = (answers: Answers): string => {
     })
     .join('\n');
 
-  const { sfcExtension } = targetFor(answers.target);
+  const { sfcExtension } = targetFor(answers);
   const overrides = overridesFor([
     ...(sfcExtension === undefined ? [] : [sfcOverride(sfcExtension)]),
     CSS_MODULE_OVERRIDE,

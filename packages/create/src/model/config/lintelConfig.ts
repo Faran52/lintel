@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import {
   AGENTS,
   type Answers,
+  BROWSERS,
+  HOSTED_FRAMEWORKS,
   LIBRARIES,
   PACKAGE_MANAGERS,
   PLUGINS,
@@ -24,6 +26,8 @@ interface ConfigObject {
   $schema?: JsonValue;
   schemaVersion?: JsonValue;
   target?: JsonValue;
+  browser?: JsonValue;
+  hostedFramework?: JsonValue;
   testing?: JsonValue;
   packageManager?: JsonValue;
   libraries?: JsonValue;
@@ -31,6 +35,7 @@ interface ConfigObject {
   typeSafety?: JsonValue;
   agents?: JsonValue;
   plugins?: JsonValue;
+  resolveConditions?: JsonValue;
 }
 
 export const CONFIG_PATH = 'lintel.config.json';
@@ -91,10 +96,36 @@ const arrayChoices = <T extends string>(
   return choices;
 };
 
+/**
+ * Export-map condition names are an open vocabulary (`node`, `bun`, `worker`, whatever a package chose), so this
+ * validates the shape rather than the members: a non-empty list of distinct non-empty strings.
+ */
+const conditionNames = (value: JsonValue | undefined): string[] => {
+  if (!isJsonArray(value) || value.length === 0) {
+    throw new Error('resolveConditions must be a non-empty array');
+  }
+
+  const names = value.map((item) => {
+    if (typeof item !== 'string' || item === '') {
+      throw new Error('resolveConditions must contain only non-empty strings');
+    }
+
+    return item;
+  });
+
+  if (new Set(names).size !== names.length) {
+    throw new Error('resolveConditions must not contain duplicate values');
+  }
+
+  return names;
+};
+
 const expectedKeys = [
   '$schema',
   'schemaVersion',
   'target',
+  'browser',
+  'hostedFramework',
   'testing',
   'packageManager',
   'libraries',
@@ -102,6 +133,7 @@ const expectedKeys = [
   'typeSafety',
   'agents',
   'plugins',
+  'resolveConditions',
 ];
 
 export const emitLintelConfig = (answers: Answers): string => {
@@ -153,12 +185,24 @@ const configFrom = (parsed: ConfigObject): LintelConfig => {
     $schema: schema,
     schemaVersion,
     target: choice(parsed.target, 'target', TARGET_IDS),
+    /**
+     * Both default rather than being required, so a config written before they existed still parses: absent `browser`
+     * is the chrome the only extension target used to assume, and absent `hostedFramework` is the plain-TypeScript
+     * shape every host had.
+     */
+    browser: parsed.browser === undefined ? 'chrome' : choice(parsed.browser, 'browser', BROWSERS),
+    ...(parsed.hostedFramework === undefined
+      ? {}
+      : { hostedFramework: choice(parsed.hostedFramework, 'hostedFramework', HOSTED_FRAMEWORKS) }),
     testing: choice(parsed.testing, 'testing', TESTING_CHOICES),
     packageManager: choice(parsed.packageManager, 'packageManager', PACKAGE_MANAGERS),
     libraries: arrayChoices(parsed.libraries, 'libraries', LIBRARIES),
     store,
     typeSafety: choice(parsed.typeSafety, 'typeSafety', TYPE_SAFETY_CHOICES),
     agents: arrayChoices(parsed.agents, 'agents', AGENTS, 1),
+    ...(parsed.resolveConditions === undefined
+      ? {}
+      : { resolveConditions: conditionNames(parsed.resolveConditions) }),
     plugins: arrayChoices(parsed.plugins, 'plugins', PLUGINS),
   };
 };

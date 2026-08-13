@@ -55,7 +55,7 @@ const BASE_EXCLUDE = ['node_modules', 'dist', 'build', 'coverage'];
 // `vite/client` carries the ambient declarations for `./logo.svg`, `./App.css` and `import.meta.env`; without it a
 // fresh project fails `tsc --noEmit` on its own starter component.
 const typesFor = (answers: Answers): string[] => {
-  const target = targetFor(answers.target);
+  const target = targetFor(answers);
 
   return [
     'node',
@@ -76,7 +76,7 @@ const pathsFrom = (answers: Answers): Record<string, string[]> => {
 };
 
 export const buildTsconfig = (answers: Answers): TsconfigFile => {
-  const delta = targetFor(answers.target).tsconfig;
+  const delta = targetFor(answers).tsconfig;
 
   return {
     ...(delta.extends === undefined ? {} : { extends: delta.extends }),

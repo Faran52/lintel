@@ -5,7 +5,7 @@ import { targetFor } from '../../model/targets';
 import { writeProjectFile } from '../project-files/projectFiles';
 import { isAbsence } from '../utils/fsUtils';
 
-import type { TargetId } from '../../model/answers/answers';
+import type { Answers } from '../../model/answers/answers';
 
 // Always rewrite `src/`: non-compiling generator output is not a project decision.
 export const SOURCE_ROOT = 'src';
@@ -154,10 +154,10 @@ const isMountEntry = (path: string, root: string): boolean => {
 
 export const rewriteScaffoldedSource = async (
   cwd: string,
-  target: TargetId,
+  answers: Answers,
   onWrite?: (path: string) => void,
 ): Promise<void> => {
-  const { typeOnlyImports } = targetFor(target);
+  const { typeOnlyImports } = targetFor(answers);
   const root = join(cwd, SOURCE_ROOT);
 
   for (const path of await sourceFiles(root)) {

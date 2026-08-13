@@ -23,7 +23,7 @@ const copiedReference = (name: string, ...sources: string[]): Artifact => {
 };
 
 export const referenceArtifacts = (answers: Answers): Artifact[] => {
-  const target = targetFor(answers.target);
+  const target = targetFor(answers);
   const references: Artifact[] = [
     copiedReference(
       'type-standards.md',

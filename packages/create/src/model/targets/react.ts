@@ -1,5 +1,6 @@
 import { FOLDER_NAMING, NAMING } from '../naming/naming';
 
+import { OUTSIDE_TESTS } from './utils/frameworkUtils';
 import {
   COMMON_REACT_PLUGINS,
   HOOKS_ALIAS,
@@ -22,6 +23,17 @@ export const react: TargetRecord = {
   naming: NAMING.react,
   folderNaming: FOLDER_NAMING.react,
   hooksAlias: HOOKS_ALIAS,
+  styleEntry: 'src/index.css',
+  vitePlugin: {
+    imports: [
+      "import react, { reactCompilerPreset } from '@vitejs/plugin-react';",
+      "import babel from '@rolldown/plugin-babel';",
+    ],
+    calls: [
+      'react()',
+      `...(${OUTSIDE_TESTS} ? [babel({ presets: [reactCompilerPreset()] })] : [])`,
+    ],
+  },
   tsconfig: { jsx: 'react-jsx' },
   starterTests: [{ source: 'starter/react/App.test.tsx', target: 'src/App.test.tsx', covers: 'src/App.tsx' }],
   staleScaffoldFiles: ['tsconfig.app.json', 'tsconfig.node.json'],

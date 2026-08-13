@@ -110,7 +110,7 @@ export interface TsconfigDelta {
   extends?: string;
 }
 
-// One record per target; everything that varies between the eight scaffolds lives here, so emitters stay free of
+// One record per target; everything that varies between the scaffolds lives here, so emitters stay free of
 // `switch (target)`.
 export interface TargetRecord {
   id: TargetId;
@@ -121,18 +121,31 @@ export interface TargetRecord {
   framework?: Framework;
   // Angular's template processor covers markup, so the html layer would double-report there.
   html: boolean;
+  // The `.astro` layer, asked for as a file type rather than a framework, so it stacks with a hosted one.
+  astro?: true;
   // Decides two things that must agree: whether `vite.config.ts` is written, and whether `vite/client` lands in
   // tsconfig `types`.
   vite: boolean;
   // The single-file-component extension, where the framework has one; drives the stylelint syntax, the `lint:css` glob,
   // coverage include and `type-standards.md` frontmatter.
   sfcExtension?: 'vue' | 'svelte';
+  /**
+   * The global stylesheet this target's scaffolder writes and already wires, quoted as the tailwind layer's
+   * `entryPoint` so the plugin reads the project's own theme instead of Tailwind's defaults. Verified per scaffolder,
+   * because the path is theirs, not this CLI's. Absent on Svelte: `sv create --template minimal` ships no stylesheet
+   * at all, so there is nothing to name.
+   */
+  styleEntry?: string;
   // Where routes live, quoted into CLAUDE.md and the repo-structure rule.
   routeUnit: string;
   // Absent where the framework has none: Angular uses DI, plain TypeScript uses `lib/`.
   hooksSlot?: HooksSlot;
   // What the state-store question offers this target; absent, the question is not asked.
   store?: StoreSlot;
+  // Whether the browser question is asked for this target. The extension target is the only one it means anything to.
+  hostsBrowser?: true;
+  // Whether the UI-framework question is asked. Set on a target that renders with a framework but is not one.
+  hostsFramework?: true;
   ignores: string[];
   naming: NamingMap;
   // Kebab-case everywhere, except a target whose routes are files needs `[slug]`/`(tabs)` allowed rather than excluded
@@ -148,8 +161,20 @@ export interface TargetRecord {
   // Names this scaffolder imports as values although they are types, keyed by module; `rewriteScaffoldedSource` adds
   // inline `type` so `verbatimModuleSyntax` accepts it.
   typeOnlyImports?: Record<string, string[]>;
+  /**
+   * What this target contributes to `vite.config.ts` `plugins`. Required, and empty on the three targets that own no
+   * vite config: they return before `emitViteConfig` reads it, so an optional field would only add a branch no answer
+   * can reach.
+   */
+  vitePlugin: PluginSpec;
   // Plugins `vitest.config.ts` needs. Only a non-Vite target can need one.
   vitestPlugin?: PluginSpec;
+  /**
+   * A factory the emitted vitest config is passed to instead of `defineConfig`. Astro is the only user: its Vite
+   * options live in `astro.config.mjs` and `getViteConfig` is the documented way to hand them to vitest, since there is
+   * no `vite.config.ts` to merge.
+   */
+  vitestFactory?: { imports: string[]; call: string };
   // Coverage exclusions beyond the shared set: modules with no branch to miss.
   coverageExclude?: string[];
   // Resolve conditions for the test run only; without `browser`, vitest loads Svelte's server build and `mount()`
@@ -183,6 +208,10 @@ export interface TargetRecord {
   // What runs on install before `husky`, for a framework that generates something the gate reads; SvelteKit's `svelte-
   // kit sync` writes the `.svelte-kit/tsconfig.json` the emitted tsconfig extends.
   prepare?: string;
+  // Scripts beyond the shared set, for a target with a way of running itself the gate does not cover.
+  extraScripts?: Record<string, string>;
+  // Runtime dependencies this target brings, beyond what its scaffolder installs; a hosted framework is the user.
+  dependencies?: string[];
   devDependencies: string[];
   // Testing libraries the starter test needs. Installed only when vitest is selected.
   testDevDependencies?: string[];

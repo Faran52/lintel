@@ -111,6 +111,8 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
 const answersIn = async (cwd: string): Promise<Answers> => {
   const {
     target,
+    browser,
+    hostedFramework,
     testing,
     packageManager,
     libraries,
@@ -118,10 +120,13 @@ const answersIn = async (cwd: string): Promise<Answers> => {
     typeSafety,
     agents,
     plugins,
+    resolveConditions,
   } = await readLintelConfig(cwd);
 
   return {
     target,
+    browser,
+    ...(hostedFramework === undefined ? {} : { hostedFramework }),
     testing,
     packageManager,
     libraries,
@@ -129,6 +134,7 @@ const answersIn = async (cwd: string): Promise<Answers> => {
     typeSafety,
     agents,
     plugins,
+    ...(resolveConditions === undefined ? {} : { resolveConditions }),
   };
 };
 
@@ -213,7 +219,7 @@ const runSync = async (options: CliOptions, answers: Answers): Promise<void> => 
 };
 
 // Returns the exit code rather than calling `process.exit`, which would drop queued stderr writes;
-// `bin/create-linteljs.mjs` assigns it to `process.exitCode`.
+// `bin/create-linteljs.js` assigns it to `process.exitCode`.
 export const main = async (argv: string[], prompter?: Prompter): Promise<number> => {
   const options = parseCliArgs(argv);
 

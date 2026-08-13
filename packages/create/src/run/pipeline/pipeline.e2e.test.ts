@@ -45,14 +45,14 @@ interface RunResult {
 // redefine plugin` collision a real consumer would hit.
 const TARBALL_DIR = env['LINTEL_TARBALLS'] ?? resolve(import.meta.dirname, '../../../../../.e2e');
 
-// Exactly one tarball per package, or none: `test:e2e` repacks before every run, so two versions means the directory
-// was filled in by hand and picking the first would test the wrong one silently.
-const tarballFor = (prefix: string): string | undefined => {
-  if (!existsSync(TARBALL_DIR)) {
-    return undefined;
-  }
-
-  const matches = readdirSync(TARBALL_DIR).filter((file) => {
+/**
+ * Exactly one tarball per package. Two versions means the directory was filled in by hand and picking the first would
+ * test the wrong one silently; none means the pack step did not produce what it is named for. Both throw, and neither
+ * skips: `test:e2e` runs `e2e:pack` immediately before this suite, so there is no state in which having no tarball is
+ * the expected one. A suite that skipped instead reported a green run having installed nothing.
+ */
+const tarballFor = (prefix: string): string => {
+  const matches = (existsSync(TARBALL_DIR) ? readdirSync(TARBALL_DIR) : []).filter((file) => {
     return file.startsWith(`${prefix}-`) && file.endsWith('.tgz');
   });
 
@@ -65,7 +65,14 @@ const tarballFor = (prefix: string): string | undefined => {
 
   const [match] = matches;
 
-  return match === undefined ? undefined : join(TARBALL_DIR, match);
+  if (match === undefined) {
+    throw new Error(
+      `${TARBALL_DIR} holds no tarball for ${prefix}. `
+      + 'Run `pnpm --filter @linteljs/create test:e2e`, which packs all three first.',
+    );
+  }
+
+  return join(TARBALL_DIR, match);
 };
 
 // pnpm pack flattens the scope into the filename, so `@linteljs/eslint-config` packs as
@@ -73,8 +80,6 @@ const tarballFor = (prefix: string): string | undefined => {
 const configTarball = tarballFor('linteljs-eslint-config');
 const pluginTarball = tarballFor('linteljs-eslint-plugin');
 const cliTarball = tarballFor('linteljs-create');
-
-const ready = configTarball !== undefined && pluginTarball !== undefined && cliTarball !== undefined;
 
 const run = (command: string, args: string[], cwd: string, input = ''): RunResult => {
   const result = spawnSync(command, args, {
@@ -100,20 +105,19 @@ const workspace = mkdtempSync(join(tmpdir(), 'lintel-e2e-'));
 // The CLI runs from the packed tarball, so `bin/`, `dist/` and `assets/` are all exercised.
 const cliRoot = join(workspace, 'cli');
 
-if (ready) {
-  mkdirSync(cliRoot, { recursive: true });
-  run('tar', ['-xzf', cliTarball, '-C', cliRoot], workspace);
-  /**
-   * A tarball is not an installation: `npx` fetches the runtime dependencies too, and without them the packed binary
-   * dies on ERR_MODULE_NOT_FOUND before writing a file. Production only, since nothing here runs the package's tests,
-   * and `--prefer-offline` so the cache serves it rather than the registry on every run.
-   */
-  run(
-    'npm',
-    ['install', '--omit=dev', '--prefer-offline', '--no-audit', '--no-fund'],
-    join(cliRoot, 'package'),
-  );
-}
+mkdirSync(cliRoot, { recursive: true });
+run('tar', ['-xzf', cliTarball, '-C', cliRoot], workspace);
+
+/**
+ * A tarball is not an installation: `npx` fetches the runtime dependencies too, and without them the packed binary
+ * dies on ERR_MODULE_NOT_FOUND before writing a file. Production only, since nothing here runs the package's tests,
+ * and `--prefer-offline` so the cache serves it rather than the registry on every run.
+ */
+run(
+  'npm',
+  ['install', '--omit=dev', '--prefer-offline', '--no-audit', '--no-fund'],
+  join(cliRoot, 'package'),
+);
 
 afterAll(() => {
   rmSync(workspace, { recursive: true, force: true });
@@ -147,9 +151,40 @@ const CASES: { label: string; answers: Answers }[] = [
     label: 'react on the relaxed floor',
     answers: { ...DEFAULT_ANSWERS, target: 'react', typeSafety: 'relaxed' },
   },
+  /**
+   * The two axes, one case each, on the combination that exercises the most: Solid, because it is the framework whose
+   * parts differ most from the host's (a resolve condition for the test run, a jsx import source, its own reactivity
+   * rule), and Firefox, because it is the browser that changes the manifest shape and adds a runner.
+   */
+  {
+    label: 'astro hosting solid',
+    answers: { ...DEFAULT_ANSWERS, target: 'astro', hostedFramework: 'solid' },
+  },
+  /**
+   * Hosted Vue, which no case reached before: it was the one hosted framework whose Vite plugin had no `VERSIONS`
+   * entry, so both hosting targets died before writing a file. A unit test now covers the table; this covers the
+   * install.
+   */
+  {
+    label: 'astro hosting vue',
+    answers: {
+      ...DEFAULT_ANSWERS,
+      target: 'astro',
+      hostedFramework: 'vue',
+    },
+  },
+  {
+    label: 'webextension on firefox hosting solid',
+    answers: {
+      ...DEFAULT_ANSWERS,
+      target: 'webextension',
+      browser: 'firefox',
+      hostedFramework: 'solid',
+    },
+  },
 ];
 
-describe.skipIf(!ready)('end-to-end generation', () => {
+describe('end-to-end generation', () => {
   it.each(CASES)('generates, installs and checks $label', ({ label, answers }) => {
     const root = join(workspace, label.replaceAll(' ', '-'));
     // The target id doubles as the project name, except `react-native`: `create-expo-app` rejects a name matching one
@@ -163,7 +198,7 @@ describe.skipIf(!ready)('end-to-end generation', () => {
     // `scaffoldCommand` function.
     const [command, ...argv] = scaffoldCommand(
       answers.packageManager,
-      targetFor(answers.target).scaffold(name, answers),
+      targetFor(answers).scaffold(name, answers),
     );
 
     const scaffold = run(command, argv, root);
@@ -180,7 +215,7 @@ describe.skipIf(!ready)('end-to-end generation', () => {
     // `--no-install` so the tarball overrides land before install; the second invocation exercises install and fix.
     const generate = run(
       'node',
-      [join(cliRoot, 'package/bin/create-linteljs.mjs'), '--skip-scaffold', '--fresh', '--no-install'],
+      [join(cliRoot, 'package/bin/create-linteljs.js'), '--skip-scaffold', '--fresh', '--no-install'],
       project,
     );
 
@@ -198,8 +233,8 @@ describe.skipIf(!ready)('end-to-end generation', () => {
       join(project, 'pnpm-workspace.yaml'),
       [
         'overrides:',
-        `  '@linteljs/eslint-config': file:${String(configTarball)}`,
-        `  '@linteljs/eslint-plugin': file:${String(pluginTarball)}`,
+        `  '@linteljs/eslint-config': file:${configTarball}`,
+        `  '@linteljs/eslint-plugin': file:${pluginTarball}`,
         'minimumReleaseAge: 0',
         '',
       ].join('\n'),
@@ -209,7 +244,7 @@ describe.skipIf(!ready)('end-to-end generation', () => {
     // overwritten, so the overrides appended above survive.
     const complete = run(
       'node',
-      [join(cliRoot, 'package/bin/create-linteljs.mjs'), '--skip-scaffold'],
+      [join(cliRoot, 'package/bin/create-linteljs.js'), '--skip-scaffold'],
       project,
     );
 

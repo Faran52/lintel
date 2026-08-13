@@ -35,6 +35,8 @@ export const vue: TargetRecord = {
   naming: NAMING.vue,
   folderNaming: FOLDER_NAMING.vue,
   hooksAlias: { '@composables/*': './src/lib/composables/*' },
+  styleEntry: 'src/assets/main.css',
+  vitePlugin: { imports: ["import vue from '@vitejs/plugin-vue';"], calls: ['vue()'] },
   tsconfig: { jsx: 'preserve', include: ['**/*.vue'] },
   // One mount of `App` with the real router walks the whole welcome tree; the store test covers the one module the demo
   // never renders, and its `covers` gate skips it where the store answer declined `--pinia`.
@@ -86,7 +88,7 @@ export const vue: TargetRecord = {
   // Declared rather than inherited from `create-vue --vitest`: `testing.vue.md` names it as the rendering library, and
   // a rule file may not depend on another generator's choice holding.
   testDevDependencies: ['@vue/test-utils'],
-  devDependencies: ['eslint-plugin-vue', 'vue-eslint-parser', 'vue-tsc'],
+  devDependencies: ['eslint-plugin-vue', 'eslint-plugin-vuejs-accessibility', 'vue-eslint-parser', 'vue-tsc'],
   allowBuilds: [],
   stateRules: ['vue-reactivity.md'],
 };

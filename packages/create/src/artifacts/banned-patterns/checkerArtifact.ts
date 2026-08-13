@@ -18,7 +18,7 @@ export const setupTestsPath = (answers: Answers, existing?: string): string => {
     return existing;
   }
 
-  return targetFor(answers.target).tsconfig.jsx === 'react-jsx'
+  return targetFor(answers).tsconfig.jsx === 'react-jsx'
     ? '__mocks__/setupTests.tsx'
     : '__mocks__/setupTests.ts';
 };
@@ -45,7 +45,7 @@ const withTypeSafety = (source: string, answers: Answers): string => {
 // React Native only: the target record's exemptsStarterTests carries why. Skips are derived from starterTests
 // rather than listed here, so a stale exemption can't outlive the file it names.
 const starterSkips = (answers: Answers): string[] => {
-  const target = targetFor(answers.target);
+  const target = targetFor(answers);
   const tests = target.exemptsStarterTests === true ? target.starterTests : undefined;
 
   if (tests === undefined || !hasTests(answers)) {

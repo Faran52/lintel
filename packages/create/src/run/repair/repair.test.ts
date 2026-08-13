@@ -17,11 +17,14 @@ import {
   it,
 } from 'vitest';
 
+import {
+  type Answers,
+  DEFAULT_ANSWERS,
+  type TargetId,
+} from '../../model/answers/answers';
 import { exists } from '../utils/fsUtils';
 
 import { repairScaffoldedOutput } from './repair';
-
-import type { TargetId } from '../../model/answers/answers';
 
 let cwd = '';
 
@@ -32,6 +35,12 @@ beforeEach(async () => {
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
 });
+
+// The repairs are read off a record, and a record is built from answers, so a test naming only a target
+// still hands over a whole set.
+const answersFor = (target: TargetId): Answers => {
+  return { ...DEFAULT_ANSWERS, target };
+};
 
 // The generator's own output, planted at the paths a generator would have written it to.
 const scaffold = async (files: Record<string, string>): Promise<void> => {
@@ -62,7 +71,7 @@ describe('starter fixes', () => {
       ].join('\n'),
     });
 
-    await repairScaffoldedOutput(cwd, 'react-native');
+    await repairScaffoldedOutput(cwd, answersFor('react-native'));
 
     const output = await readFile(join(cwd, 'src/components/AppTabs.tsx'), 'utf8');
 
@@ -79,7 +88,7 @@ describe('starter fixes', () => {
 
     await scaffold({ 'src/components/web-badge.tsx': source });
 
-    await repairScaffoldedOutput(cwd, 'react-native');
+    await repairScaffoldedOutput(cwd, answersFor('react-native'));
 
     expect(await readFile(join(cwd, 'src/components/WebBadge.tsx'), 'utf8')).toBe(source);
   });
@@ -87,7 +96,7 @@ describe('starter fixes', () => {
   it("voids expo's floating splash screen call", async () => {
     await scaffold({ 'src/app/_layout.tsx': 'SplashScreen.preventAutoHideAsync();\n' });
 
-    await repairScaffoldedOutput(cwd, 'react-native');
+    await repairScaffoldedOutput(cwd, answersFor('react-native'));
 
     expect(await readFile(join(cwd, 'src/app/_layout.tsx'), 'utf8'))
       .toBe('void SplashScreen.preventAutoHideAsync();\n');
@@ -100,7 +109,7 @@ describe('starter fixes', () => {
     await writeFile(external, 'SplashScreen.preventAutoHideAsync();\n', 'utf8');
     await symlink(external, join(cwd, 'src/app/_layout.tsx'));
 
-    await expect(repairScaffoldedOutput(cwd, 'react-native'))
+    await expect(repairScaffoldedOutput(cwd, answersFor('react-native')))
       .rejects.toThrow('Refusing to write src/app/_layout.tsx: target is a symbolic link');
     await expect(readFile(external, 'utf8'))
       .resolves.toBe('SplashScreen.preventAutoHideAsync();\n');
@@ -121,7 +130,7 @@ describe('starter fixes', () => {
       ].join('\n'),
     });
 
-    await repairScaffoldedOutput(cwd, 'react-native');
+    await repairScaffoldedOutput(cwd, answersFor('react-native'));
 
     const output = await readFile(join(cwd, 'src/components/ExternalLink.tsx'), 'utf8');
 
@@ -146,7 +155,7 @@ describe('starter fixes', () => {
       ].join('\n'),
     });
 
-    await repairScaffoldedOutput(cwd, 'react-native');
+    await repairScaffoldedOutput(cwd, answersFor('react-native'));
 
     const output = await readFile(join(cwd, 'src/components/ThemedView.tsx'), 'utf8');
 
@@ -173,7 +182,7 @@ describe('starter fixes', () => {
       ].join('\n'),
     });
 
-    await repairScaffoldedOutput(cwd, 'react-native');
+    await repairScaffoldedOutput(cwd, answersFor('react-native'));
 
     const output = await readFile(join(cwd, 'src/hooks/useColorScheme.web.ts'), 'utf8');
 
@@ -196,7 +205,7 @@ describe('starter fixes', () => {
       ].join('\n'),
     });
 
-    await repairScaffoldedOutput(cwd, 'react-native');
+    await repairScaffoldedOutput(cwd, answersFor('react-native'));
 
     const output = await readFile(join(cwd, 'src/components/AnimatedIcon.tsx'), 'utf8');
 
@@ -209,7 +218,7 @@ describe('starter fixes', () => {
   it("fills vue's empty html lang, which is worse than none", async () => {
     await scaffold({ 'index.html': '<html lang="">\n' });
 
-    await repairScaffoldedOutput(cwd, 'vue');
+    await repairScaffoldedOutput(cwd, answersFor('vue'));
 
     expect(await readFile(join(cwd, 'index.html'), 'utf8')).toBe('<html lang="en">\n');
   });
@@ -219,7 +228,7 @@ describe('starter fixes', () => {
   it('relativises the @/ alias create-vue points its logo at', async () => {
     await scaffold({ 'src/App.vue': '<template><img src="@/assets/logo.svg" /></template>\n' });
 
-    await repairScaffoldedOutput(cwd, 'vue');
+    await repairScaffoldedOutput(cwd, answersFor('vue'));
 
     expect(await readFile(join(cwd, 'src/App.vue'), 'utf8'))
       .toBe('<template><img src="./assets/logo.svg" /></template>\n');
@@ -238,7 +247,7 @@ describe('starter fixes', () => {
       ].join('\n'),
     });
 
-    await repairScaffoldedOutput(cwd, 'svelte');
+    await repairScaffoldedOutput(cwd, answersFor('svelte'));
 
     const output = await readFile(join(cwd, 'src/app.html'), 'utf8');
 
@@ -258,7 +267,7 @@ describe('starter fixes', () => {
       ].join('\n'),
     });
 
-    await repairScaffoldedOutput(cwd, 'svelte');
+    await repairScaffoldedOutput(cwd, answersFor('svelte'));
 
     const output = await readFile(join(cwd, 'src/routes/+layout.svelte'), 'utf8');
 
@@ -269,12 +278,12 @@ describe('starter fixes', () => {
 
   it("types angular's catch callback and stops plain TS coercing a number", async () => {
     await scaffold({ 'src/main.ts': 'bootstrapApplication(App).catch((err) => log(err));\n' });
-    await repairScaffoldedOutput(cwd, 'angular');
+    await repairScaffoldedOutput(cwd, answersFor('angular'));
 
     expect(await readFile(join(cwd, 'src/main.ts'), 'utf8')).toContain('(err: unknown) =>');
 
     await scaffold({ 'src/counter.ts': 'el.innerHTML = `Count is ${counter}`;\n' });
-    await repairScaffoldedOutput(cwd, 'webextension');
+    await repairScaffoldedOutput(cwd, answersFor('webextension'));
 
     expect(await readFile(join(cwd, 'src/counter.ts'), 'utf8')).toContain('${String(counter)}');
   });
@@ -283,7 +292,7 @@ describe('starter fixes', () => {
     const written: string[] = [];
 
     await scaffold({ 'index.html': '<html lang="">\n', 'src/App.vue': '<template />\n' });
-    await repairScaffoldedOutput(cwd, 'vue', (path) => {
+    await repairScaffoldedOutput(cwd, answersFor('vue'), (path) => {
       written.push(path);
     });
 
@@ -292,7 +301,7 @@ describe('starter fixes', () => {
   });
 
   it('survives a generator that moved its starter files', async () => {
-    await expect(repairScaffoldedOutput(cwd, 'svelte'))
+    await expect(repairScaffoldedOutput(cwd, answersFor('svelte')))
       .resolves.toBeUndefined();
   });
 
@@ -300,7 +309,7 @@ describe('starter fixes', () => {
   // difference between a `lint:css` gate that passes on day one and one that does not.
   it("fills angular's empty component stylesheet, which no fixer reaches", async () => {
     await scaffold({ 'src/app/app.css': '' });
-    await repairScaffoldedOutput(cwd, 'angular');
+    await repairScaffoldedOutput(cwd, answersFor('angular'));
 
     expect(await readFile(join(cwd, 'src/app/app.css'), 'utf8'))
       .toBe('/* Component styles for app-root. */\n');
@@ -310,7 +319,7 @@ describe('starter fixes', () => {
     const styled = ':host {\n  display: block;\n}\n';
 
     await scaffold({ 'src/app/app.css': styled });
-    await repairScaffoldedOutput(cwd, 'angular');
+    await repairScaffoldedOutput(cwd, answersFor('angular'));
 
     expect(await readFile(join(cwd, 'src/app/app.css'), 'utf8')).toBe(styled);
   });
@@ -330,7 +339,7 @@ describe('starter fixes', () => {
       ].join('\n'),
     });
 
-    await repairScaffoldedOutput(cwd, 'vue');
+    await repairScaffoldedOutput(cwd, answersFor('vue'));
 
     const merged = await readFile(join(cwd, 'src/assets/base.css'), 'utf8');
 
@@ -345,7 +354,7 @@ describe('starter fixes', () => {
     const store = 'export const useCounterStore = defineStore("counter", () => ({}));\n';
 
     await scaffold({ 'src/stores/counter.ts': store });
-    await repairScaffoldedOutput(cwd, 'vue', (path) => {
+    await repairScaffoldedOutput(cwd, answersFor('vue'), (path) => {
       written.push(path);
     });
 
@@ -368,7 +377,7 @@ describe('stale scaffolder files', () => {
       await writeFile(join(cwd, path), body, 'utf8');
     }
 
-    await repairScaffoldedOutput(cwd, target, undefined, (message) => {
+    await repairScaffoldedOutput(cwd, answersFor(target), undefined, (message) => {
       notices.push(message);
     });
 
@@ -422,7 +431,7 @@ describe('starterRenames', () => {
       ].join('\n'),
     });
 
-    await repairScaffoldedOutput(cwd, 'react-native');
+    await repairScaffoldedOutput(cwd, answersFor('react-native'));
 
     expect(await exists(join(cwd, 'src/components/ThemedText.tsx'))).toBe(true);
     expect(await exists(join(cwd, 'src/components/themed-text.tsx'))).toBe(false);
@@ -443,7 +452,7 @@ describe('starterRenames', () => {
       'src/app/index.tsx': "import { AnimatedIcon } from '@/components/animated-icon';\n",
     });
 
-    await repairScaffoldedOutput(cwd, 'react-native');
+    await repairScaffoldedOutput(cwd, answersFor('react-native'));
 
     expect(await exists(join(cwd, 'src/components/AnimatedIcon.web.tsx'))).toBe(true);
     expect(await exists(join(cwd, 'src/components/AnimatedIcon.module.css'))).toBe(true);
@@ -457,7 +466,7 @@ describe('starterRenames', () => {
   it('renames a file differing from its target only in case', async () => {
     await scaffold({ 'src/components/ui/collapsible.tsx': 'export const Collapsible = 1;\n' });
 
-    await repairScaffoldedOutput(cwd, 'react-native');
+    await repairScaffoldedOutput(cwd, answersFor('react-native'));
 
     expect(await exists(join(cwd, 'src/components/ui/Collapsible.tsx'))).toBe(true);
   });
@@ -466,7 +475,7 @@ describe('starterRenames', () => {
   it('leaves the route directory alone', async () => {
     await scaffold({ 'src/app/index.tsx': 'export default 1;\n' });
 
-    await repairScaffoldedOutput(cwd, 'react-native');
+    await repairScaffoldedOutput(cwd, answersFor('react-native'));
 
     expect(await exists(join(cwd, 'src/app/index.tsx'))).toBe(true);
   });
@@ -475,7 +484,7 @@ describe('starterRenames', () => {
     const notices: string[] = [];
 
     await scaffold({ 'src/components/themed-text.tsx': 'export const ThemedText = 1;\n' });
-    await repairScaffoldedOutput(cwd, 'react-native', undefined, (message) => {
+    await repairScaffoldedOutput(cwd, answersFor('react-native'), undefined, (message) => {
       notices.push(message);
     });
 
@@ -487,7 +496,7 @@ describe('starterRenames', () => {
   it('renames nothing on a target whose generator already names things correctly', async () => {
     await scaffold({ 'src/components/themed-text.tsx': 'export const ThemedText = 1;\n' });
 
-    await repairScaffoldedOutput(cwd, 'react');
+    await repairScaffoldedOutput(cwd, answersFor('react'));
 
     expect(await exists(join(cwd, 'src/components/themed-text.tsx'))).toBe(true);
   });

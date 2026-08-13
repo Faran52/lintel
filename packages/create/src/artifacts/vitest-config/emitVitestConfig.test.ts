@@ -70,4 +70,15 @@ describe('emitVitestConfig', () => {
       expect(configFor({ target })).not.toContain('conditions');
     },
   );
+
+  /**
+   * A merged config inherits `tsconfigPaths` from `vite.config.ts`, but a standalone one has nothing to inherit it
+   * from, and every alias in the emitted `tsconfig.json` is then unresolvable from a test.
+   */
+  it.each<TargetId>(['next', 'angular'])(
+    'resolves the tsconfig aliases for %s, which has no vite config to merge',
+    (target) => {
+      expect(configFor({ target })).toContain('resolve: { tsconfigPaths: true },');
+    },
+  );
 });

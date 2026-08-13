@@ -20,6 +20,7 @@ import {
 
 import {
   AGENTS,
+  type Answers,
   DEFAULT_ANSWERS,
   LIBRARIES,
   PACKAGE_MANAGERS,
@@ -219,6 +220,87 @@ describe('parseLintelConfig', () => {
       .toEqual({ $schema: CONFIG_SCHEMA_URL, schemaVersion: 1, ...DEFAULT_ANSWERS });
   });
 
+  /**
+   * Both fields arrived after the schema did, so a config written without them still has to parse: an absent `browser`
+   * is the chrome the only extension target used to assume, and an absent `hostedFramework` is the plain-TypeScript
+   * shape every host had.
+   */
+  it('defaults the extension axes when a config predates them', () => {
+    const withoutAxes = JSON.stringify({
+      $schema: CONFIG_SCHEMA_URL,
+      schemaVersion: 1,
+      target: 'webextension',
+      testing: 'vitest',
+      packageManager: 'pnpm',
+      libraries: [],
+      store: false,
+      typeSafety: 'strict',
+      agents: ['claude-code'],
+      plugins: [],
+    });
+
+    const config = parseLintelConfig(withoutAxes);
+
+    expect(config.browser).toBe('chrome');
+    expect(config.hostedFramework).toBeUndefined();
+  });
+
+  it('round-trips both extension axes', () => {
+    const answers = {
+      ...DEFAULT_ANSWERS,
+      target: 'webextension',
+      browser: 'firefox',
+      hostedFramework: 'solid',
+    } as const;
+
+    expect(parseLintelConfig(emitLintelConfig(answers)))
+      .toEqual({ $schema: CONFIG_SCHEMA_URL, schemaVersion: 1, ...answers });
+  });
+
+  it.each([
+    ['browser', 'safari'],
+    ['hostedFramework', 'angular'],
+  ])('rejects an unknown %s', (field, value) => {
+    const config = {
+      $schema: CONFIG_SCHEMA_URL,
+      schemaVersion: 1,
+      ...DEFAULT_ANSWERS,
+      [field]: value,
+    };
+
+    expect(() => {
+      return parseLintelConfig(JSON.stringify(config));
+    }).toThrow(new RegExp(`${field} must be one of`));
+  });
+
+  it('round-trips the resolver conditions', () => {
+    const answers: Answers = { ...DEFAULT_ANSWERS, resolveConditions: ['import', 'default'] };
+
+    expect(parseLintelConfig(emitLintelConfig(answers))).toEqual({
+      $schema: CONFIG_SCHEMA_URL,
+      schemaVersion: 1,
+      ...answers,
+    });
+  });
+
+  // An open vocabulary, so the shape is what gets validated: a non-empty list of distinct non-empty strings.
+  it.each([
+    [[], 'must be a non-empty array'],
+    [['import', ''], 'must contain only non-empty strings'],
+    [['import', 1], 'must contain only non-empty strings'],
+    [['import', 'import'], 'must not contain duplicate values'],
+    ['import', 'must be a non-empty array'],
+  ])('rejects resolveConditions of %j', (resolveConditions, message) => {
+    expect(() => {
+      return parseLintelConfig(JSON.stringify({
+        $schema: CONFIG_SCHEMA_URL,
+        schemaVersion: 1,
+        ...DEFAULT_ANSWERS,
+        resolveConditions,
+      }));
+    }).toThrow(new RegExp(message));
+  });
+
   it('rejects malformed JSON', () => {
     expect(() => {
       return parseLintelConfig('{');
@@ -264,12 +346,12 @@ describe('parseLintelConfig', () => {
     [
       'a missing target',
       config({ target: undefined }),
-      /target must be one of: react, next, vue, svelte, solid, angular, webextension, react-native/,
+      /target must be one of: react, next, vue, svelte, solid, angular, astro, webextension, react-native/,
     ],
     [
       'an unknown target',
       config({ target: 'ember' }),
-      /target must be one of: react, next, vue, svelte, solid, angular, webextension, react-native/,
+      /target must be one of: react, next, vue, svelte, solid, angular, astro, webextension, react-native/,
     ],
     ['an unknown testing choice', config({ testing: 'jest' }), /testing must be one of: vitest, none/],
     [

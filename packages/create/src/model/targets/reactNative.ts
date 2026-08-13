@@ -1,6 +1,6 @@
 import { FOLDER_NAMING, NAMING } from '../naming/naming';
 
-import { esmAssetImports } from './utils/targetUtils';
+import { COMMON_REACT_PLUGINS, esmAssetImports } from './utils/targetUtils';
 
 import type { TargetRecord } from './record';
 
@@ -44,6 +44,9 @@ export const reactNative: TargetRecord = {
   extraAliases: { '@/assets/*': './assets/*', '@/*': './src/*' },
   // `expo/tsconfig.base` carries the module resolution and asset declarations React Native needs; `.expo/types` (from
   // `expo customize tsconfig`) holds generated route types, and `expo-env.d.ts` declares the bundler's own modules.
+  styleEntry: 'src/global.css',
+  // No vite config of its own, so nothing to contribute; see the field on `TargetRecord`.
+  vitePlugin: { imports: [], calls: [] },
   tsconfig: {
     jsx: 'react-jsx',
     extends: 'expo/tsconfig.base',
@@ -315,7 +318,8 @@ export const reactNative: TargetRecord = {
   // The one target with no scaffolder-written `build`: `eas build` needs a remote account, so `expo export --platform
   // web` stands in, since web is also the platform that statically renders every route.
   build: 'expo export --platform web',
-  devDependencies: ['@eslint-react/eslint-plugin', 'eslint-plugin-react-hooks'],
+  // The shared list, not a copy of it: this target composes `react()`, so it installs what that layer loads.
+  devDependencies: [...COMMON_REACT_PLUGINS],
   // `@srsholmes/vitest-react-native` is what lets vitest load React Native at all, stripping the untranspiled Flow
   // types and standing in for native modules; its `esbuild` dependency needs an install script, hence `allowBuilds`.
   testDevDependencies: [

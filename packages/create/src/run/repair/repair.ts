@@ -10,13 +10,13 @@ import { writeProjectFile } from '../project-files/projectFiles';
 import { SOURCE_ROOT, sourceFiles } from '../rewrite/rewrite';
 import { exists } from '../utils/fsUtils';
 
-import type { TargetId } from '../../model/answers/answers';
+import type { Answers } from '../../model/answers/answers';
 import type { StarterRename } from '../../model/targets';
 
 // Only fresh projects get repairs; exact generator text turns upstream drift into a notice.
 const applyStarterFixes = async (
   cwd: string,
-  target: TargetId,
+  answers: Answers,
   onWrite?: (path: string) => void,
   onNotice?: (message: string) => void,
 ): Promise<void> => {
@@ -24,7 +24,7 @@ const applyStarterFixes = async (
     path,
     transform,
     moveTo,
-  } of targetFor(target).starterFixes ?? []) {
+  } of targetFor(answers).starterFixes ?? []) {
     const full = join(cwd, path);
     let before = '';
 
@@ -78,13 +78,13 @@ const repointSpecifiers = (source: string, edits: [string, string][]): string =>
 // Rename after starter fixes, which match original paths; `rename` handles case-only APFS moves.
 const renameStarterFiles = async (
   cwd: string,
-  target: TargetId,
+  answers: Answers,
   onWrite?: (path: string) => void,
   onNotice?: (message: string) => void,
 ): Promise<void> => {
   const moved: StarterRename[] = [];
 
-  for (const entry of targetFor(target).starterRenames ?? []) {
+  for (const entry of targetFor(answers).starterRenames ?? []) {
     const present = await exists(join(cwd, entry.from));
 
     if (!present) {
@@ -123,10 +123,10 @@ const renameStarterFiles = async (
 // (e.g. an unreferenced `tsconfig.app.json` still reads as the tsconfig).
 const removeStaleScaffoldFiles = async (
   cwd: string,
-  target: TargetId,
+  answers: Answers,
   onNotice?: (message: string) => void,
 ): Promise<void> => {
-  for (const path of targetFor(target).staleScaffoldFiles ?? []) {
+  for (const path of targetFor(answers).staleScaffoldFiles ?? []) {
     const present = await exists(join(cwd, path));
 
     if (!present) {
@@ -141,11 +141,11 @@ const removeStaleScaffoldFiles = async (
 
 export const repairScaffoldedOutput = async (
   cwd: string,
-  target: TargetId,
+  answers: Answers,
   onWrite?: (path: string) => void,
   onNotice?: (message: string) => void,
 ): Promise<void> => {
-  await applyStarterFixes(cwd, target, onWrite, onNotice);
-  await renameStarterFiles(cwd, target, onWrite, onNotice);
-  await removeStaleScaffoldFiles(cwd, target, onNotice);
+  await applyStarterFixes(cwd, answers, onWrite, onNotice);
+  await renameStarterFiles(cwd, answers, onWrite, onNotice);
+  await removeStaleScaffoldFiles(cwd, answers, onNotice);
 };

@@ -27,8 +27,10 @@ const answersFor = (overrides: AnswerOverrides): Answers => {
 describe('buildScripts', () => {
   it('emits the target typecheck variant', () => {
     expect(buildScripts(answersFor({ target: 'vue' }))['typecheck']).toBe('vue-tsc --noEmit');
+    // `--fail-on-warnings` is load-bearing, not decoration: Svelte reports accessibility as a compiler warning, and
+    // without the flag `svelte-check` prints it and exits 0.
     expect(buildScripts(answersFor({ target: 'svelte' }))['typecheck']).toBe(
-      'svelte-kit sync && svelte-check --tsconfig ./tsconfig.json',
+      'svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings',
     );
     expect(buildScripts(answersFor({ target: 'react' }))['typecheck']).toBe('tsc --noEmit');
   });

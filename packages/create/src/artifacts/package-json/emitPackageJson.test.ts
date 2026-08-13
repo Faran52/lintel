@@ -23,6 +23,7 @@ import {
   patchPackageJson,
   versioned,
 } from './emitPackageJson';
+import { NODE_ENGINE, PACKAGE_MANAGER_VERSIONS } from './versions';
 
 interface AnswerOverrides {
   target?: TargetId;
@@ -120,12 +121,14 @@ describe('patchPackageJson', () => {
     );
   });
 
+  // Reads the pin off the table rather than repeating it, so `versions.ts` stays the one file a bump touches.
   it('sets type, packageManager and engines', () => {
     const patched = patchPackageJson(SCAFFOLDED, answersFor({ packageManager: 'bun' }));
+    const bun = PACKAGE_MANAGER_VERSIONS.bun;
 
     expect(patched.type).toBe('module');
-    expect(patched.packageManager).toBe('bun@1.3.0');
-    expect(patched.engines).toEqual({ node: '>=24.19.0', bun: '>=1.3.0' });
+    expect(patched.packageManager).toBe(`bun@${bun}`);
+    expect(patched.engines).toEqual({ node: NODE_ENGINE, bun: `>=${bun}` });
   });
 
   // build is inherited from the scaffolder except React Native, whose eas build needs an account; expo export is the

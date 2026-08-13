@@ -40,6 +40,8 @@ describe('ask', () => {
       name: 'demo-app',
       answers: {
         target: 'svelte',
+        // Svelte hosts neither axis, so both questions are skipped and the browser keeps its default.
+        browser: 'chrome',
         testing: 'none',
         packageManager: 'bun',
         libraries: ['zod', 'tailwind'],
@@ -49,6 +51,43 @@ describe('ask', () => {
         plugins: [...PLUGINS],
       },
     });
+  });
+
+  /**
+   * The extension target is the only one that hosts either axis, so it is the only one asked. `webextension` has no
+   * store slot, so this is name plus nine answers: target, browser, UI framework, testing, manager, libraries, type
+   * safety, agents, plugins.
+   */
+  it('asks the browser and the UI framework for an extension, and records both', async () => {
+    const { result, recorded } = await askWith([
+      'demo-app', 'webextension', 'firefox', 'solid',
+      undefined, undefined, undefined, undefined, undefined, undefined,
+    ]);
+
+    expect(recorded.calls).toContain('Browser');
+    expect(recorded.calls).toContain('UI framework');
+    expect(result.answers.browser).toBe('firefox');
+    expect(result.answers.hostedFramework).toBe('solid');
+  });
+
+  // `none` is a real answer, not a skipped question: an extension without a framework is the default shape.
+  it('records no hosted framework when the answer is none', async () => {
+    const { result } = await askWith([
+      'demo-app', 'webextension', 'chrome', 'none',
+      undefined, undefined, undefined, undefined, undefined, undefined,
+    ]);
+
+    expect(result.answers.hostedFramework).toBeUndefined();
+    expect(result.answers.browser).toBe('chrome');
+  });
+
+  it('asks neither axis on a target that hosts neither', async () => {
+    const { recorded } = await askWith([
+      'demo-app', 'react', undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+    ]);
+
+    expect(recorded.calls).not.toContain('Browser');
+    expect(recorded.calls).not.toContain('UI framework');
   });
 
   // No language question on any target: this CLI generates TypeScript only. Angular does have a store slot, unlike

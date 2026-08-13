@@ -14,7 +14,7 @@ export const RUN_PREFIX: Record<PackageManager, string> = {
 // Exported so `lint:css` and the stage-6 fix pass can't disagree about what the gate covers.
 // SFC extensions are included because `src/**/*.css` matches none of a Vue or Svelte project's styles.
 export const styleGlob = (answers: Answers): string => {
-  const { sfcExtension } = targetFor(answers.target);
+  const { sfcExtension } = targetFor(answers);
 
   return sfcExtension === undefined ? 'src/**/*.css' : `src/**/*.{css,${sfcExtension}}`;
 };
@@ -22,7 +22,7 @@ export const styleGlob = (answers: Answers): string => {
 // check is named in the return type so callers need no unreachable, type-demanded `?? ''` fallback.
 export const buildScripts = (answers: Answers): Record<string, string> & { check: string } => {
   const run = RUN_PREFIX[answers.packageManager];
-  const target = targetFor(answers.target);
+  const target = targetFor(answers);
   const gates = ['lint', 'lint:css', 'typecheck'];
 
   const scripts: Record<string, string> = {
@@ -34,6 +34,9 @@ export const buildScripts = (answers: Answers): Record<string, string> & { check
     'typecheck': target.typecheck,
   };
 
+  // A target's own extras, before the gates below so `check` still reads as the gate list.
+  Object.assign(scripts, target.extraScripts);
+
   if (hasTests(answers)) {
     // vitest exits 1 on an empty run (hence --passWithNoTests); test:coverage stays strict, since check uses it.
     scripts['test'] = 'vitest run --passWithNoTests';
@@ -41,7 +44,7 @@ export const buildScripts = (answers: Answers): Record<string, string> & { check
     gates.push('test:coverage');
   }
 
-  // build comes from the scaffolder for seven of eight targets; the gate stays unconditional, since a target with none
+  // build comes from the scaffolder for most targets; the gate stays unconditional, since a target with none
   // is a gap, not a shape to accommodate.
   if (target.build !== undefined) {
     scripts['build'] = target.build;

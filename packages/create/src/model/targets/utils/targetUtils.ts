@@ -32,7 +32,13 @@ export const tabsToSpaces = (source: string): string => {
 
 export const HOOKS_ALIAS: AliasMap = { '@hooks/*': './src/lib/hooks/*' };
 
-export const COMMON_REACT_PLUGINS = ['@eslint-react/eslint-plugin', 'eslint-plugin-react-hooks'];
+// `jsx-a11y` is here because `react()` loads it: accessibility is a property of JSX, so every target composing that
+// layer installs it, not just Next.
+export const COMMON_REACT_PLUGINS = [
+  '@eslint-react/eslint-plugin',
+  'eslint-plugin-jsx-a11y',
+  'eslint-plugin-react-hooks',
+];
 
 const ASSET_REQUIRE = /require\('([^']+\.(?:png|jpe?g|gif|webp|avif|svg))'\)/g;
 

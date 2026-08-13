@@ -29,7 +29,7 @@
   ],
   "type": "module",
   "bin": {
-    "create-linteljs": "./bin/create-linteljs.mjs"
+    "create-linteljs": "./bin/create-linteljs.js"
   },
   "exports": {
     ".": {

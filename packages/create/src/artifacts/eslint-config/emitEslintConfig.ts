@@ -13,13 +13,33 @@ type OptionRow = [keyof DefineConfigOptions, string];
 // The subpath, not the barrel: the barrel loads all six framework layers, five unneeded by any one project.
 const PACKAGE = '@linteljs/eslint-config/define-config';
 
-// Applied everywhere; per-target additions come from the target record. `plugins/linteljs/` is shipped, not written
-// here, so linting it gates a project on a file it does not own and cannot fix without a release.
-const BASE_IGNORES = ['dist/**', 'coverage/**', '.claude/**', 'plugins/linteljs/**'];
+/**
+ * Applied everywhere; per-target additions come from the target record. `plugins/linteljs/` is shipped, not written
+ * here, so linting it gates a project on a file it does not own and cannot fix without a release.
+ * `.agents/` is the codex half of `.claude/` and is ignored on the same grounds: this CLI writes
+ * `.agents/plugins/marketplace.json` itself, and an agent host's own directory is not project source. Ignoring one
+ * and not the other made a real project's gate fail on skill files mirrored into `.agents/`.
+ */
+const BASE_IGNORES = [
+  'dist/**',
+  'coverage/**',
+  '.claude/**',
+  '.agents/**',
+  'plugins/linteljs/**',
+];
 
-// Escaped, not just wrapped: a folder glob's backslash written straight through parses back as another pattern.
+/**
+ * A backslash cannot be written straight through: in an ordinary string literal it parses back as an escape, so the
+ * emitted pattern is not the one intended. `String.raw` says that once, where doubling every backslash says it per
+ * character and leaves the reader counting them. Only a value that actually carries one takes the tag; everything else
+ * stays a plain quoted string.
+ */
 const quote = (value: string): string => {
-  return `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
+  if (value.includes('\\')) {
+    return `String.raw\`${value}\``;
+  }
+
+  return `'${value.replaceAll("'", "\\'")}'`;
 };
 
 const indentOf = (level: number): string => {
@@ -56,7 +76,7 @@ const objectLiteral = (entries: [string, string][], level: number): string => {
 
 // The layer switches lead, then the options `base` reads, so "which layers" is answered at the top of the object.
 const optionRows = (answers: Answers): OptionRow[] => {
-  const target = targetFor(answers.target);
+  const target = targetFor(answers);
   const rows: OptionRow[] = [];
 
   if (target.framework !== undefined) {
@@ -76,12 +96,40 @@ const optionRows = (answers: Answers): OptionRow[] => {
     rows.push(['html', 'true']);
   }
 
+  // A file type, so it stacks with whatever framework the site hosts rather than standing in for one.
+  if (target.astro === true) {
+    rows.push(['astro', 'true']);
+  }
+
   const layers = LIBRARY_LAYERS.filter((layer) => {
     return hasLibrary(answers, layer);
   });
 
   if (layers.length > 0) {
     rows.push(['libraries', arrayLiteral('libraries', layers)]);
+  }
+
+  /**
+   * Names the stylesheet the theme lives in, so `better-tailwindcss` reasons about the project's own tokens rather
+   * than Tailwind's defaults. Without it the plugin warns once per class string that the entry point is `undefined`
+   * and orders custom tokens as unknowns: 63 warnings on one real project. Only where the target has a stylesheet to
+   * name, which is every one but Svelte.
+   */
+  const { styleEntry } = target;
+
+  if (hasLibrary(answers, 'tailwind') && styleEntry !== undefined) {
+    rows.push(['tailwindEntryPoint', quote(`./${styleEntry}`)]);
+  }
+
+  /**
+   * Only where the project recorded them. A dependency publishing subpaths through a wildcard `exports` map that the
+   * `types` condition cannot satisfy is the case this exists for; `@linteljs/eslint-config` explains why the order is
+   * not a safe default.
+   */
+  const { resolveConditions } = answers;
+
+  if (resolveConditions !== undefined) {
+    rows.push(['resolver', `{ conditionNames: ${arrayLiteral('conditionNames', resolveConditions, 2)} }`]);
   }
 
   rows.push(['ignores', arrayLiteral('ignores', [...BASE_IGNORES, ...target.ignores])]);
