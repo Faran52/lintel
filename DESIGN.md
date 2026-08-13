@@ -32,6 +32,43 @@ One command produces a new project with the standard already applied. One comman
 to a project that already exists. The shared rules live in a published package, so a fix reaches
 every project on update instead of being re-copied into some of them.
 
+## One version per shared dependency
+
+The same argument the paragraph above makes about rules applies to this workspace's own versions.
+Eight dependencies were declared in more than one `package.json`, and `@types/node` had already
+drifted: `~24.13.3` at the root and in `eslint-config`, `^24.13.3` in `eslint-plugin`, with nothing
+to say which was meant. They now read `catalog:`, and the version lives once in the `catalog:` block
+of `pnpm-workspace.yaml`.
+
+Being shared is necessary but not sufficient. A dependency is catalogued when more than one package
+declares it **and all of them mean the same thing by it**. Three cases stay out:
+
+- **One consumer.** It already has exactly one place to change; a catalog entry would add a hop for
+  nothing.
+- **Part of a published surface.** `eslint-config` pins every runtime dependency exactly, so the rule
+  set it ships is reproducible. `eslint-plugin` declares two of those as well, but only to lint
+  itself with them. Catalogued, the two stop being separable, and a bump that reads like dev-tooling
+  maintenance edits what `eslint-config` publishes. That is the reason, and it does not depend on the
+  two ranges looking different: whether `eslint-plugin` carets or pins is its own business, and
+  either way its dev choice must not reach through a shared entry into a released dependency.
+  `eslint-plugin-sonarjs` and `typescript-eslint` were briefly catalogued for exactly the wrong
+  reason, which is that one package dev-uses what another ships.
+- **Peer ranges.** Deliberately wider than what this workspace installs: `eslint` is `>=9` for a
+  consumer and `catalog:` for development.
+
+What is left is the six that are unambiguously shared dev tooling: `@types/node`,
+`@vitest/coverage-v8`, `eslint`, `tsdown`, `typescript` and `vitest`.
+
+`pnpm pack` rewrites the protocol, verified on `eslint-config`, whose runtime dependencies are the
+ones that would ship it: the tarball carries `4.2.0` and `8.67.0`, and no `catalog:` survives. That
+does mean releases go through pnpm; a bare `npm publish` would ship the protocol verbatim.
+
+`@linteljs/create`'s `VERSIONS` table is deliberately **not** on the catalog. It names versions for
+somebody else's project, not for this workspace, and the two move for different reasons. The one
+coupling that does matter is that a generated project must not be handed something older than the
+layers it installs were built against, and `versions.test.ts` gates exactly that against the
+catalog rather than leaving it to a comment.
+
 ## Non-goals
 
 These are decisions, not omissions. Re-adding any of them needs an argument.
@@ -72,20 +109,98 @@ These are decisions, not omissions. Re-adding any of them needs an argument.
   double-reporting one defect, a framework owning a filename. "It would be noisy otherwise" is
   not a reason.
 - **No forked extension framework.** The `webextension` target is `create-vite --template
-  vanilla-ts` plus a manifest, a service worker and `@crxjs/vite-plugin`, which reads the manifest
+  vanilla-ts` plus a manifest, a background entry and `@crxjs/vite-plugin`, which reads the manifest
   and builds each surface the way the browser loads it. WXT and `vite-plugin-web-extension` both
   work, and both bring a project layout of their own that would sit on top of the one
   `repo-structure.webextension.md` describes. The manifest ships with empty `permissions` and
   `host_permissions`: those are the project's security surface, and a template guessing at them is
   how an extension ends up asking for more than it uses.
+- **The extension target has two axes, and neither is a second target.** A `browser`
+  (`chrome`/`firefox`) and an optional hosted UI framework move one record rather than forking it.
+  Both were measured against the two reference projects, `compatlens` and `claude-firefox`.
+
+  The browser decides the manifest shape and the ambient types, **not the bundler**: `crx` builds
+  for both, and its own manifest type carries the `service_worker` and the `scripts` background
+  forms plus `browser_specific_settings.gecko`, so the alternative (a hand-rolled multi-entry
+  `build.rollupOptions.input`) buys nothing and costs hashed filenames the manifest cannot
+  reference. Firefox additionally takes `web-ext`, which runs the build in a real Firefox, lints the
+  manifest the way AMO will, and packages the upload; it is not a bundler, so `crx` still is.
+
+  It also decides the background starter, which is the one place the axis reaches into shipped code.
+  `@types/firefox-webext-browser` declares `browser.*` and no `chrome`, and its install-details type
+  requires `temporary`, so the entry, its handler and the handler's test are per browser rather than
+  shared. That is not a style preference between two spellings: Chrome's starter under Firefox's
+  types lints as findings on an undeclared global, which is how the end-to-end suite found it.
+
+  The hosted framework decides what a component is, which Vite plugin runs ahead of `crx`, and which
+  layer lints it, leaving the manifest and the surface layout alone. It is composed from
+  `targets/utils/frameworkUtils.ts` rather than read off the framework's own record, because those
+  records are app-shaped: their `scaffold`, `routeUnit`, `typecheck` and aliases describe a
+  standalone app. A host needs the narrow set that actually varies, which is what that file holds.
+  Svelte's entry there is the bare `@sveltejs/vite-plugin-svelte`, not `sveltekit()`, since a host
+  owns its own entry.
+
+  This is also what makes `compatlens` expressible, which the "Targets" section below has always
+  claimed it was: a Solid extension is `webextension` plus `hostedFramework: 'solid'`, and before
+  the axis existed it was neither the `solid` target (a Vite SPA with no manifest) nor the
+  `webextension` one (vanilla, with no framework layer).
 - **No bespoke React Native ESLint layer.** The target composes `framework: 'react'`, because it
   is React. `eslint-plugin-react-native` peers at `eslint ^9` and would cap `@linteljs/eslint-config`,
   which peers `>=9` and develops on 10. `eslint-config-expo` bundles its own `@typescript-eslint`,
   `eslint-plugin-import`, `eslint-plugin-react` and `react-hooks`, every one colliding with a layer
-  `base()` already registers, and undoing that is the thirty lines `next()` carries. What is given
-  up is the RN-only style rules (`no-inline-styles`, `no-raw-text`); what is kept is one ESLint
-  major and no plugin fighting `base()`.
-- **Vitest for React Native too.** One runner across all eight targets, so `testing` is a yes or
+  `base()` already registers, and undoing that is the surgery `next()` used to carry for the same
+  reason. What is given up is the RN-only style rules (`no-inline-styles`, `no-raw-text`); what is
+  kept is one ESLint major and no plugin fighting `base()`.
+- **The plugin, not the framework's config.** `next()` registers `@next/eslint-plugin-next` rather
+  than wrapping `eslint-config-next`, for the reason above read forwards: that config bundles
+  `eslint-plugin-react`, `react-hooks`, `eslint-plugin-import` and `jsx-a11y` and enables a slice of
+  each, and three of the four are ground the layers already cover with newer plugins. Wrapping it
+  cost surgery on its flat entries and forty lines that read the installed React version off disk to
+  pin `settings.react.version`, because its bundled `eslint-plugin-react` calls
+  `context.getFilename()`, removed in ESLint 10, and every `react/*` rule threw at load without it.
+  Taking the plugin alone keeps the 22 `@next/next` rules that are the point and deletes all of that.
+  Three plugins left the dependency graph with it, and three peer allowances went with them.
+
+  `next()` now carries Next and nothing else. A Next project gets what a React project gets by
+  stacking on `react()`, and the only accessibility detail left here is that `next/image` renders an
+  `img`, which `alt-text` has to be told.
+- **What git ignores, ESLint ignores.** Flat config reads no `.gitignore`, so a build output had to
+  be named twice: once for git and once in `ignores`. That is a copy, and copies drift, which is the
+  argument this whole document opens with. Two misses came from it before `base()` started reading
+  the file: an agent host's own directory, and a repo whose second output directory was being linted
+  because only the first was guessed at. The conversion is `includeIgnoreFile` from `eslint/config`,
+  not a hand-written glob, because gitignore semantics (negation, anchoring, directory-only patterns)
+  are easy to get subtly wrong and are not this package's problem to own. The hardcoded entries stay:
+  a project may not gitignore `dist/`, and `plugins/linteljs/` is committed on purpose.
+- **Accessibility belongs to JSX, not to a framework.** `jsx-a11y` used to reach Next projects only,
+  by accident, because `eslint-config-next` bundled it and enabled six of its rules at `warn`. An
+  element with no accessible name is the same defect in a Vite React app, in a Solid app and in an
+  extension, so `react()` and `solid()` enable the plugin's own `recommended` preset and every target
+  composing them installs it. The preset is taken whole rather than hand-picked, the way every other
+  preset in these layers arrives: six rules chosen by a framework's config is that framework's floor,
+  not a standard. Measured before landing: 31 newly error-level rules against a real Next project,
+  zero new findings.
+- **The template frameworks get the same floor, by three different mechanisms.** Vue, Svelte and
+  Angular render templates rather than JSX, so `jsx-a11y` cannot see them. Each is covered now, and
+  the mechanism differs per framework because what each ecosystem ships differs:
+
+  | framework | mechanism | why not the others |
+  | --- | --- | --- |
+  | Vue | `eslint-plugin-vuejs-accessibility`, `flat/recommended`, 20 rules | `eslint-plugin-vue` carries no accessibility rule of its own |
+  | Angular | `angular-eslint`'s `templateAccessibility`, 11 rules | `templateRecommended` is four rules and none of them is about accessibility |
+  | Svelte | `svelte-check --fail-on-warnings` | `eslint-plugin-svelte` v3 ships **zero** a11y rules; the compiler owns them |
+
+  Svelte is the one worth writing down, because the obvious answer is wrong. Its a11y rules moved
+  out of the ESLint plugin and into the compiler, which reports them as *warnings*, and
+  `svelte-check` exits 0 on a warning. Measured: an `<img>` with no `alt` printed
+  `a11y_missing_attribute` and the gate passed, exit 0; with the flag, exit 1. So Svelte's
+  accessibility gate is a typecheck flag rather than a lint rule, and a project that drops the flag
+  silently loses the whole category.
+
+  Vue's preset is ordered *ahead* of `@linteljs/vue`, not after it. The preset's own second entry
+  sets `languageOptions.parser` for `**/*.vue`, and placed later it lands on the same glob and takes
+  the `parserOptions` carrying `projectService` with it.
+- **Vitest for React Native too.** One runner across all nine targets, so `testing` is a yes or
   no rather than a choice of runner. It ran on `jest-expo` first, and that reached 71% coverage
   and stopped: three of the template's modules exist only as `.web`, a native run never loads
   them, and jest-expo's own web project does not survive Reanimated's web build. Two vitest
@@ -103,8 +218,13 @@ These are decisions, not omissions. Re-adding any of them needs an argument.
 
 ## Targets
 
-Eight: React, Next.js, Vue, Svelte, Solid, Angular, React Native through Expo, and a Manifest V3
-browser extension, for which `compatlens` is the reference.
+Nine: React, Next.js, Vue, Svelte, Solid, Angular, Astro, React Native through Expo, and a
+Manifest V3 browser extension, for which `compatlens` is the reference.
+
+Two of the nine host a UI framework rather than being one. Astro renders `.astro` templates and
+hydrates islands; the extension target renders whatever its surfaces are written in. Both take the
+same `hostedFramework` answer, from the same `targets/utils/frameworkUtils.ts`, so adding a framework
+to one adds it to both.
 
 ## Project structure
 

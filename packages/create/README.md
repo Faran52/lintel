@@ -56,6 +56,7 @@ still compose exported layers by hand.
 | Svelte | sv |
 | Solid | Vite |
 | Angular | Angular CLI |
+| Astro | create-astro |
 | React Native | Expo |
 | Web Extension | Vite, then a Manifest V3 layer |
 

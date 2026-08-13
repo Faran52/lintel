@@ -77,12 +77,13 @@ choice for a project config.
 | `typescript()` | `/typescript` | Strict type-aware rules and an untyped tail for JavaScript and HTML. |
 | `vitest()` | `/vitest` | Vitest recommended rules for test files. |
 | `html()` | `/html` | HTML rules with its own parser. |
-| `react()` | `/react` | React, React Hooks, and Lintel React rules. |
+| `astro()` | `/astro` | `.astro` template rules and accessibility, with its own parser. A file type, so it stacks with a framework layer rather than replacing one. |
+| `react()` | `/react` | React, React Hooks, JSX accessibility, and Lintel React rules. |
 | `next()` | `/next` | Next configuration, composed after React. |
-| `vue()` | `/vue` | Vue recommended rules with TypeScript nested in the SFC parser. |
-| `svelte()` | `/svelte` | Svelte recommended rules with the same parser arrangement. |
-| `solid()` | `/solid` | Solid TypeScript rules. |
-| `angular()` | `/angular` | Angular TypeScript and template rules. |
+| `vue()` | `/vue` | Vue recommended rules and template accessibility, with TypeScript nested in the SFC parser. |
+| `svelte()` | `/svelte` | Svelte recommended rules with the same parser arrangement. Accessibility is the compiler's, reported by `svelte-check --fail-on-warnings`, not this layer's. |
+| `solid()` | `/solid` | Solid TypeScript rules and JSX accessibility. |
+| `angular()` | `/angular` | Angular TypeScript rules, plus template rules and template accessibility. |
 | `tanstackQuery()` | `/tanstack-query` | TanStack Query recommended rules. |
 | `tailwind()` | `/tailwind` | Tailwind class-order, duplicate, and conflict checks. |
 

@@ -39,4 +39,10 @@ describe.
 - `__mocks__/fixerSamples.ts` is a shared corpus run against **every** rule. A fixer defect belongs
   there as well as in the rule's own suite: one nasty input then covers all eleven rules.
 - `packages/create/src/run/pipeline/pipeline.e2e.test.ts` is excluded from the default run by its
-  `.e2e.` infix. It scaffolds, installs and gates all eight targets for real, and takes minutes.
+  `.e2e.` infix. It scaffolds, installs and gates all nine targets for real, plus one case per answer
+  dimension, and takes minutes.
+- **That suite never skips.** A missing tarball throws, because `test:e2e` packs all three
+  immediately before running: there is no state in which having none is expected. It previously
+  guarded itself with `describe.skipIf`, which meant a pack that produced nothing reported a green
+  run having installed nothing. The only legitimate skip is a `-t` filter on the command line, and
+  the count it prints as skipped is the cases the filter excluded, not cases the suite declined.

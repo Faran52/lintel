@@ -18,7 +18,7 @@ Use the package manager you have.
 | Bun | `bun create @linteljs my-app` |
 
 The generated project has ESLint flat config, TypeScript settings, git hooks, test setup, and coding-agent
-rules. It supports React, Next.js, Vue, Svelte, Solid, Angular, React Native through Expo, and Manifest V3 web
+rules. It supports React, Next.js, Vue, Svelte, Solid, Angular, Astro, React Native through Expo, and Manifest V3 web
 extensions.
 
 It starts with a working gate:

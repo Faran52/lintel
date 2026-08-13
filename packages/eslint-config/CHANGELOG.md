@@ -1,5 +1,73 @@
 # Changelog
 
+## 1.2.0
+
+### Fixed
+
+- The import resolver sets `alwaysTryTypes`, so a declaration file is tried in addition to whatever a package's
+  `exports` map resolves to.
+
+### Changed
+
+- `next()` registers `@next/eslint-plugin-next` instead of wrapping `eslint-config-next`. That config bundles
+  `eslint-plugin-react`, `eslint-plugin-react-hooks`, `eslint-plugin-import` and `eslint-plugin-jsx-a11y` and enables a
+  slice of each; three of the four duplicate what `base()` and `react()` already do with `import-x`, `@eslint-react` and
+  `react-hooks` v7. Taking the plugin alone keeps the 22 `@next/next` rules and deletes two workarounds: surgery on the
+  upstream flat entries, and forty lines that read the installed React version off disk to pin `settings.react.version`,
+  which existed because the bundled `eslint-plugin-react` calls `context.getFilename()`, removed in ESLint 10, and every
+  `react/*` rule threw at load without it. What is left in `next()` is Next and nothing else: a Next project gets what a
+  React project gets by stacking on `react()`, plus those 22 rules, plus the one genuinely Next-specific accessibility
+  detail, that `next/image` renders an `img` and `alt-text` has to be told. Three plugins left the dependency graph, and
+  with them three of the four peer allowances a workspace needed. `eslint-config-next` is no longer a peer;
+  `@next/eslint-plugin-next` and `eslint-plugin-jsx-a11y` are, both optional.
+- `base()` enables `import-x/no-anonymous-default-export`. `eslint-config-next` was the only thing enabling its
+  `eslint-plugin-import` equivalent, so the rule reached Next projects and nothing else, though nothing about it is
+  framework-specific: it is the convention every emitted config already follows. It found two anonymous default exports
+  in this workspace the moment it was turned on.
+
+### Added
+
+- `resolver.conditionNames` names the export-map conditions the resolver tries, and in what order. It exists for a
+  dependency that publishes subpaths through a wildcard `exports` map: `@modelcontextprotocol/sdk` maps `"./*"` to both
+  `./dist/esm/*` and `./dist/esm/*.d.ts`, so under `types` alone `sdk/server/mcp.js` resolves to a
+  `server/mcp.js.d.ts` that does not exist and `import-x/no-unresolved` reports an import `tsc` resolves fine. Putting
+  `import` ahead of `types` fixes that case and is deliberately **not** the default, because it also makes
+  `react-native` resolve to its Flow-typed `index.js` rather than `index.d.ts`, which import-x cannot parse: measured,
+  that took a generated React Native project from a clean gate to 127 findings, since the parse failures also stopped
+  `eslint --fix` and left 111 autofixable ones behind. Only the end-to-end suite catches this, so a change to the
+  resolver defaults is one to run it for.
+- Accessibility rules across the JSX layers. `react()` and `solid()` enable `eslint-plugin-jsx-a11y`'s own flat
+  `recommended` preset, which reaches React, Next and React Native through the first and Solid through the second, and
+  an extension or Astro site hosting either through the same layers. It used to arrive only in Next projects, by
+  accident, through `eslint-config-next`, which enabled six of these rules at `warn`; that was Next's choice of floor
+  rather than a standard, and an element with no accessible name is the same defect in a Vite app. The preset is taken
+  whole, the way every other preset in this package is, rather than hand-picked. Measured on a real Next project before
+  landing it: 31 newly error-level rules, zero new findings.
+- Accessibility for the template frameworks, which `jsx-a11y` cannot see. `vue()` enables
+  `eslint-plugin-vuejs-accessibility`'s `flat/recommended`, 20 rules, since `eslint-plugin-vue` carries none of its own;
+  it is ordered ahead of this package's own `.vue` block because the preset sets a parser for the same glob and would
+  otherwise take the `parserOptions` that put `projectService` there. `angular()` adds `angular-eslint`'s
+  `templateAccessibility`, 11 rules, none of which is in the `templateRecommended` it already applied. Both are new
+  optional peers in the case of Vue, and already-installed presets in the case of Angular.
+
+  Svelte gets none, on purpose: `eslint-plugin-svelte` v3 ships zero accessibility rules, having moved them into the
+  compiler. Its gate is `svelte-check --fail-on-warnings`, which `@linteljs/create` now passes, because the compiler
+  reports accessibility as a warning and `svelte-check` exits 0 on a warning. An `<img>` with no `alt` printed
+  `a11y_missing_attribute` and passed; with the flag it fails.
+- `vitest/valid-expect` allows the second argument. Vitest's `expect(actual, message)` takes a message naming what the
+  assertion means, which Jest has no equivalent for and which the rule's default of one argument reported. Raised to
+  two rather than turned off, so a third argument is still a mistake.
+
+
+
+- `defineConfig` takes `tailwindEntryPoint`, the CSS file holding `@import "tailwindcss"`, and passes it to the
+  tailwind layer as `settings['better-tailwindcss'].entryPoint`. Without it the plugin reasons about Tailwind's
+  default theme, so a project's own tokens are foreign classes: it sorts them into the wrong group and warns, once per
+  class string, that the entry point is `undefined`. Measured on a real project, the theme-aware order is the reverse
+  of the theme-blind one for every custom token (`bg-accent`, `text-meta`, `label-caps`), so a `--fix` without this
+  committed an order the plugin itself disagrees with once told where the theme is. The layer still takes no
+  entry point by default, which is a fresh scaffold, and `no-unknown-classes` stays off either way.
+
 ## 1.1.4
 
 No change to this package. The three versions move together, so this carries the `@linteljs/create`

@@ -10,6 +10,9 @@ that package.
 
 - `package.json` is canonical for the package manager, engines, dependencies and scripts. Read it
   rather than assuming a version. pnpm 11 only, Node 24.
+- A dependency more than one package uses reads `catalog:`, and its one version lives in the
+  `catalog:` block of `pnpm-workspace.yaml`. Bump it there, not in a `package.json`. `pnpm pack`
+  rewrites the protocol to a real range, so a published tarball never carries `catalog:`.
 - The workspace lints itself with its own layers, imported from source, so a rule change is judged
   against this repository before it reaches anyone else. A change to a layer is a change to this
   repo's own gate.
@@ -34,7 +37,7 @@ that package.
 
 `pnpm check` chains `lint && lint:css && typecheck && test:coverage && build`, which is the same
 chain a generated project gets. `lint:css` passes on an empty glob rather than being absent: this
-workspace has no CSS today, and a repo that ships the gate to eight targets should run it. The
+workspace has no CSS today, and a repo that ships the gate to nine targets should run it. The
 end-to-end suite runs each official scaffolder for real and takes about five minutes; it is
 excluded from `check` and from the default test run because it hits the network.
 
@@ -66,7 +69,7 @@ excluded from `check` and from the default test run because it hits the network.
 The rule files under `packages/create/assets/claude-rules/` are the published standard.
 `.claude/rules/` adopts the three that apply to a workspace of libraries and records where this
 repo differs: `type-standards.md`, `testing.md` and `repo-structure.md`. Read them before writing
-code here. The per-target rule files do not apply, because this is not one of the eight targets: a
+code here. The per-target rule files do not apply, because this is not one of the nine targets: a
 state rule for React or Svelte reactivity has nothing to govern in a package of ESLint rules.
 
 The enforcement half is installed too, and is the same set a generated project receives:

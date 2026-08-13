@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+No change to this package. The three versions move together, so this carries the Astro target and the
+extension's two axes in `@linteljs/create`, and the accessibility layers in
+`@linteljs/eslint-config`.
+
 ## 1.1.4
 
 No change to this package. The three versions move together, so this carries the `@linteljs/create`
