@@ -1,106 +1,51 @@
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { join } from 'node:path';
+import nextPlugin from '@next/eslint-plugin-next';
 
-import nextConfig from 'eslint-config-next';
+import { SCRIPT_EXTENSIONS } from '../utils/globUtils';
 
 import { reactGroup } from './react';
 
-import type { Linter } from 'eslint';
 import type { Layer } from '../types';
+
+/**
+ * Next.js. Stacks on `react()`: the one framework layer that is not exclusive.
+ *
+ * `@next/eslint-plugin-next`, not `eslint-config-next`. The config bundles `eslint-plugin-react`,
+ * `eslint-plugin-react-hooks`, `eslint-plugin-import` and `eslint-plugin-jsx-a11y` and enables a slice of each, and
+ * three of those four are ground `base()` and `react()` already cover with newer plugins: `@eslint-react` for the 22
+ * `react/*` rules, `eslint-plugin-react-hooks` v7 for the 16 `react-hooks/*` ones, and `import-x` for the single
+ * `import/*` one. Taking the plugin alone keeps the 22 `@next/next` rules that are the actual Next-specific value and
+ * drops the rest of the tree.
+ *
+ * What that removed, all of it workaround: surgery on the upstream flat entries (its `next` entry claimed every script
+ * extension for a pre-ESLint-10 parser, and its `next/typescript` entry re-registered `@typescript-eslint` that
+ * `typescript()` had already registered), and forty lines that resolved the installed React version from disk to pin
+ * `settings.react.version`, because the bundled `eslint-plugin-react` reads `context.getFilename()`, gone in ESLint 10,
+ * and every `react/*` rule threw at load without it. None of that is needed when those plugins are not in the tree.
+ *
+ * What is left here is Next and nothing else. A Next project gets what a React project gets, because it stacks on
+ * `react()`, plus the 22 rules below. Accessibility is not Next-specific and lives in `react()`; the one Next-specific
+ * thing about it is that `next/image` renders an `img`, which the option below tells `alt-text`.
+ */
 
 // React's bucket plus Next itself, composed rather than restated so the two cannot disagree.
 export const nextGroup: string[] = [...reactGroup, '^next$', '^next/'];
 
-// A type predicate, not an extractor answering `string | undefined`: the shape `type-standards.md` grants `unknown`.
-const isVersioned = (parsed: unknown): parsed is { version: string } => {
-  return typeof parsed === 'object'
-    && parsed !== null
-    && 'version' in parsed
-    && typeof parsed.version === 'string';
-};
+const REACT_FILES = [`**/*.{${SCRIPT_EXTENSIONS}}`];
 
-// Only MODULE_NOT_FOUND and ERR_PACKAGE_PATH_NOT_EXPORTED mean react is absent; anything else,
-// notably ERR_INVALID_PACKAGE_CONFIG for a corrupt package.json, stays an error.
-const ABSENT_CODES = new Set(['MODULE_NOT_FOUND', 'ERR_PACKAGE_PATH_NOT_EXPORTED']);
-
-const isAbsent = (error: unknown): error is Error & { code: string } => {
-  return error instanceof Error
-    && 'code' in error
-    && typeof error.code === 'string'
-    && ABSENT_CODES.has(error.code);
-};
-
-// Resolved from the working directory, not from this file, which lives inside `node_modules`.
-const resolvedReactManifest = (): string | undefined => {
-  try {
-    return createRequire(join(process.cwd(), 'noop.js')).resolve('react/package.json');
-  }
-  catch (error) {
-    if (isAbsent(error)) {
-      return undefined;
-    }
-
-    throw error;
-  }
-};
-
-const installedReactVersion = (): string | undefined => {
-  const manifest = resolvedReactManifest();
-
-  if (manifest === undefined) {
-    return undefined;
-  }
-
-  const parsed: unknown = JSON.parse(readFileSync(manifest, 'utf8'));
-
-  return isVersioned(parsed) ? parsed.version : undefined;
-};
-
-// Pin `settings.react.version`: the `eslint-config-next` copy of `eslint-plugin-react` detects it via
-// `context.getFilename()`, gone in ESLint 10, so every `react/*` rule throws at load. Delete when upstream supports 10.
-const reactVersionSettings = (): Layer => {
-  const version = installedReactVersion();
-
-  return version ? [{ name: '@linteljs/next/react-version', settings: { react: { version } } }] : [];
-};
-
-/**
- * `eslint-config-next`'s flat entries need surgery to sit beside `typescript()`; delete once upstream ships a
- * flat config built for ESLint 10. `next` claims every script extension for a pre-ESLint-10 parser (dies with
- * `scopeManager.addGlobals is not a function`), so its parser and Babel `parserOptions` go and the 1174
- * `globals` stay. `next/typescript` registers `@typescript-eslint` again, which `typescript()` already did
- * (`Cannot redefine plugin`); dropping the whole entry would also drop the only thing pointing TypeScript
- * files at a working parser.
- */
-const normaliseUpstreamEntry = (entry: Linter.Config): Linter.Config => {
-  if (entry.name === 'next/typescript') {
-    const copy = { ...entry };
-
-    delete copy.plugins;
-
-    return copy;
-  }
-
-  if (entry.name === 'next' && entry.languageOptions !== undefined) {
-    const languageOptions = { ...entry.languageOptions };
-
-    // Bracket access: ESLint types `LanguageOptions` with an index signature, and the base
-    // tsconfig sets `noPropertyAccessFromIndexSignature`.
-    delete languageOptions['parser'];
-    delete languageOptions['parserOptions'];
-
-    return { ...entry, languageOptions };
-  }
-
-  return entry;
-};
-
-// Next.js. Stacks on `react()`: the one framework layer that is not exclusive.
 export const next = (): Layer => {
   return [
-    ...nextConfig.map(normaliseUpstreamEntry),
-    ...reactVersionSettings(),
+    {
+      name: '@linteljs/next',
+      files: REACT_FILES,
+      plugins: { '@next/next': nextPlugin },
+      rules: {
+        ...nextPlugin.configs['core-web-vitals'].rules,
+
+        // `next/image` renders an `img`, so without this every `<Image>` reads as missing alt text. The rule itself is
+        // enabled by `react()`, at the severity that layer sets; this adds the mapping and nothing else.
+        'jsx-a11y/alt-text': ['error', { elements: ['img'], img: ['Image'] }],
+      },
+    },
   ];
 };
 

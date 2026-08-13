@@ -1,3 +1,4 @@
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import solidPlugin from 'eslint-plugin-solid';
 
 import { SCRIPT_EXTENSIONS } from '../utils/globUtils';
@@ -10,10 +11,18 @@ export const solidGroup: string[] = ['^solid-js$', '^solid-js/', '^@solidjs/'];
 
 const SOLID_FILES = [`**/*.{${SCRIPT_EXTENSIONS}}`];
 
-// The plugin's preset carries no `files` glob, so the layer supplies one; without it the
-// reactivity rules read as enabled on `.html` and `.css`.
+/**
+ * The plugin's preset carries no `files` glob, so the layer supplies one; without it the
+ * reactivity rules read as enabled on `.html` and `.css`.
+ *
+ * Accessibility applies here for the same reason it applies to React: Solid renders JSX, and these rules read the
+ * markup rather than the framework. `eslint-plugin-solid` carries no a11y rules of its own.
+ */
 export const solid = (): Layer => {
-  return presetOf(solidPlugin.configs['flat/typescript'], 'solid/flat/typescript', SOLID_FILES);
+  return [
+    ...presetOf(solidPlugin.configs['flat/typescript'], 'solid/flat/typescript', SOLID_FILES),
+    ...presetOf(jsxA11y.flatConfigs.recommended, 'jsx-a11y/recommended', SOLID_FILES),
+  ];
 };
 
 export default solid;

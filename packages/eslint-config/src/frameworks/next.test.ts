@@ -1,18 +1,8 @@
-import {
-  mkdir,
-  mkdtemp,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { ruleIdsFor, startsWith } from '@mocks/lintText';
 import {
   describe,
   expect,
   it,
-  vi,
 } from 'vitest';
 
 import base from '../base';
@@ -20,19 +10,80 @@ import base from '../base';
 import next from './next';
 import react from './react';
 
-import type { Linter } from 'eslint';
+/**
+ * This layer used to wrap `eslint-config-next` and spend most of its lines undoing it: surgery on the upstream flat
+ * entries, and a disk read to pin `settings.react.version` so the bundled `eslint-plugin-react` did not throw on
+ * ESLint 10. It now registers `@next/eslint-plugin-next` directly, so the tests for all of that went with it. What is
+ * left to prove is that the rules a Next project actually had are still the rules it gets.
+ */
+const composed = (): ReturnType<typeof base> => {
+  return [...base(), ...react(), ...next()];
+};
 
 describe('next', () => {
-  it('reports a raw <img>, which is the rule eslint-config-next exists for', async () => {
+  it('reports a raw <img>, the rule this layer exists for', async () => {
     const code = 'export const Page = () => {\n  return <img src="/a.png" alt="a" />;\n};\n';
-    const ruleIds = await ruleIdsFor([...react(), ...next()], code, 'src/app/page.tsx');
+    const ruleIds = await ruleIdsFor(composed(), code, 'src/app/page.tsx');
 
-    expect(ruleIds.some(startsWith('@next/next/'))).toBe(true);
+    expect(ruleIds).toContain('@next/next/no-img-element');
   });
 
-  it('turns off the eslint-plugin-import rules that duplicate import-x', async () => {
+  // `core-web-vitals`, not `recommended`: the extra rules are the point of the preset upstream pointed projects at.
+  it('carries the whole core-web-vitals set', () => {
+    const rules = Object.keys(next()[0]?.rules ?? {}).filter(startsWith('@next/next/'));
+
+    expect(rules).toHaveLength(22);
+  });
+
+  /**
+   * Accessibility is a property of JSX, not of Next, so it is `react()` that enables it. All this layer adds is the one
+   * thing about it that really is Next's: `next/image` renders an `img`.
+   */
+  it('adds only the next/image mapping on top of the accessibility react() enables', () => {
+    const a11y = Object.keys(next()[0]?.rules ?? {}).filter((rule) => {
+      return rule.startsWith('jsx-a11y/');
+    });
+
+    expect(a11y).toEqual(['jsx-a11y/alt-text']);
+  });
+
+  it('reports an unsupported aria attribute through those rules', async () => {
+    const code = 'export const Page = () => {\n  return <div aria-nonsense="x">a</div>;\n};\n';
+    const ruleIds = await ruleIdsFor(composed(), code, 'src/app/page.tsx');
+
+    expect(ruleIds).toContain('jsx-a11y/aria-props');
+  });
+
+  // `next/image` renders an `img`, so `alt-text` has to know about it or every `<Image>` reads as missing alt text.
+  it('tells alt-text about next/image', () => {
+    expect(next()[0]?.rules?.['jsx-a11y/alt-text']).toEqual(['error', { elements: ['img'], img: ['Image'] }]);
+  });
+
+  // Nothing but Next: what a React project gets, a Next project gets by stacking, not by this layer restating it.
+  it('registers only the next plugin', () => {
+    expect(next().flatMap((entry) => {
+      return Object.keys(entry.plugins ?? {});
+    })).toEqual(['@next/next']);
+  });
+
+  /**
+   * The three plugins the replaced config bundled, none of which is in the tree now: `base()` and `react()` cover the
+   * same ground with `import-x`, `@eslint-react` and `react-hooks` v7. Each of the three also stopped its own `eslint`
+   * peer range at 9, so this is what took three peer allowances out of the workspace.
+   */
+  it('registers none of the plugins the replaced config bundled', () => {
+    const registered = next().flatMap((entry) => {
+      return Object.keys(entry.plugins ?? {});
+    });
+
+    expect(registered).not.toContain('react');
+    expect(registered).not.toContain('react-hooks');
+    expect(registered).not.toContain('import');
+  });
+
+  it('reports an unresolved import through import-x rather than eslint-plugin-import', async () => {
     const code = "import { missing } from './nowhere';\n\nexport const value = missing;\n";
-    const ruleIds = await ruleIdsFor([...base(), ...react(), ...next()], code, 'src/app/page.tsx');
+    const ruleIds = await ruleIdsFor(composed(), code, 'src/app/page.tsx');
 
     expect(ruleIds).not.toContain('import/no-unresolved');
     expect(ruleIds).toContain('import-x/no-unresolved');
@@ -48,95 +99,13 @@ describe('next', () => {
     expect(registrations).toEqual([]);
   });
 
-  // Next's first entry claims every TS extension for its own bundled pre-ESLint-10 parser, so something after
-  // it must re-assert a working one or `.tsx` files die on `scopeManager.addGlobals is not a function`.
-  it('still points TypeScript files at a parser after dropping the plugin key', () => {
+  // No parser of its own either: it no longer inherits one from upstream, so `base()` is what points `.tsx` at a
+  // parser and this layer must not claim the extensions for a different one.
+  it('claims no parser', () => {
     const parsers = next().filter((entry) => {
-      return entry.files?.includes('**/*.tsx') === true
-        && entry.languageOptions?.['parser'] !== undefined;
+      return entry.languageOptions?.['parser'] !== undefined;
     });
 
-    expect(parsers.length).toBeGreaterThan(0);
-  });
-
-  // Nothing re-asserts a working parser for plain JavaScript, so upstream's Babel parser has to
-  // go rather than be overridden; its globals stay.
-  it('claims no parser for javascript, whose config files nothing else re-asserts', () => {
-    const jsParsers = next().filter((entry) => {
-      return entry.files?.some((glob) => {
-        return typeof glob === 'string' && glob.includes('js');
-      }) === true
-      && entry.languageOptions?.['parser'] !== undefined
-      && !entry.files.includes('**/*.tsx');
-    });
-
-    expect(jsParsers).toEqual([]);
-
-    const withGlobals = next().filter((entry) => {
-      return entry.languageOptions?.['globals'] !== undefined;
-    });
-
-    expect(withGlobals.length).toBeGreaterThan(0);
-  });
-
-  // Pinned because `eslint-config-next`'s bundled `eslint-plugin-react` detects the version via
-  // `context.getFilename()`, removed in ESLint 10.
-  const reactVersionEntry = (): Linter.Config | undefined => {
-    return next().find((entry) => {
-      return entry.name === '@linteljs/next/react-version';
-    });
-  };
-
-  it('pins the react version this workspace has installed', () => {
-    expect(JSON.stringify(reactVersionEntry()?.settings)).toMatch(/^\{"react":\{"version":"\d+\./);
-  });
-
-  // A planted react rather than an empty directory: vitest puts the pnpm store on `NODE_PATH`,
-  // so the real react resolves from any working directory and an empty one proves nothing.
-  const withPlantedReact = async (manifest: string, assert: () => void): Promise<void> => {
-    const root = await mkdtemp(join(tmpdir(), 'lintel-react-'));
-    const spy = vi.spyOn(process, 'cwd').mockReturnValue(root);
-
-    try {
-      await mkdir(join(root, 'node_modules', 'react'), { recursive: true });
-      await writeFile(join(root, 'node_modules', 'react', 'package.json'), manifest, 'utf8');
-      assert();
-    }
-    finally {
-      spy.mockRestore();
-      await rm(root, { recursive: true, force: true });
-    }
-  };
-
-  it('omits the pin where no manifest resolves, rather than throwing', async () => {
-    await withPlantedReact('{"name":"react","version":"9.9.9","exports":{".":"./index.js"}}', () => {
-      expect(reactVersionEntry()).toBeUndefined();
-    });
-  });
-
-  // Only absence is data: a corrupt manifest throws ERR_INVALID_PACKAGE_CONFIG rather than reading as absent.
-  it('throws on a manifest that is present but corrupt', async () => {
-    await withPlantedReact('not json at all', () => {
-      expect(reactVersionEntry).toThrow();
-    });
-  });
-
-  it('omits the pin where the manifest names no version, rather than inventing one', async () => {
-    await withPlantedReact('{"name":"react"}', () => {
-      expect(reactVersionEntry()).toBeUndefined();
-    });
-  });
-
-  // A manifest is somebody else's file and can hold anything.
-  it('omits the pin where version is present but not a string', async () => {
-    await withPlantedReact('{"name":"react","version":19}', () => {
-      expect(reactVersionEntry()).toBeUndefined();
-    });
-  });
-
-  it('reads the planted version rather than one baked into the layer', async () => {
-    await withPlantedReact('{"name":"react","version":"9.9.9"}', () => {
-      expect(reactVersionEntry()?.settings).toEqual({ react: { version: '9.9.9' } });
-    });
+    expect(parsers).toEqual([]);
   });
 });

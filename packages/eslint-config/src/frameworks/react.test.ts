@@ -85,4 +85,22 @@ describe('react', () => {
 
     expect(ruleIds).toContain('@eslint-react/no-array-index-key');
   });
+
+  /**
+   * Accessibility belongs to JSX, so it is enabled here rather than in `next()`, which is where it used to arrive by
+   * accident through `eslint-config-next`. A Vite React app now gets the same floor a Next app does.
+   */
+  it('reports an image with no alt text', async () => {
+    const code = 'export const Logo = () => {\n  return <img src="/a.png" />;\n};\n';
+    const ruleIds = await ruleIdsFor([...base(), ...react()], code, 'src/Logo.tsx');
+
+    expect(ruleIds).toContain('jsx-a11y/alt-text');
+  });
+
+  it('reports an aria attribute that is not a real one', async () => {
+    const code = 'export const Box = () => {\n  return <div aria-nonsense="x">a</div>;\n};\n';
+    const ruleIds = await ruleIdsFor([...base(), ...react()], code, 'src/Box.tsx');
+
+    expect(ruleIds).toContain('jsx-a11y/aria-props');
+  });
 });
