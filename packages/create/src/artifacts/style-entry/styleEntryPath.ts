@@ -1,4 +1,5 @@
 import { targetFor } from '../../model/targets';
+import { projectSpelling } from '../project-shape/projectShape';
 
 import type { Answers } from '../../model/answers/answers';
 
@@ -26,7 +27,7 @@ export const STYLE_ENTRY_CANDIDATES = [
   'src/style.css',
 ];
 
-// The project's own where one was found, and the target's default otherwise.
-export const styleEntryPath = (answers: Answers, existing?: string): string | undefined => {
-  return existing ?? targetFor(answers).styleEntry;
+// The target's own entry where the project has it, the project's own otherwise, and the target's default at birth.
+export const styleEntryPath = (answers: Answers, present: readonly string[]): string | undefined => {
+  return projectSpelling(targetFor(answers).styleEntry, present);
 };

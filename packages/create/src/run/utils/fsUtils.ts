@@ -54,18 +54,16 @@ export const readIfPresent = async (path: string): Promise<string | null> => {
 };
 
 /**
- * The first of `candidates` present under `cwd`, relative as given, or undefined. A project that
- * already holds one spelling of a file keeps it rather than gaining a second beside it.
+ * Every one of `candidates` present under `cwd`, relative as given, in the order given. All of them rather than the
+ * first: a project can hold two spellings of the same file, and which one it means is the caller's decision, not this
+ * list's order. See `projectSpelling`, which makes it.
  */
-export const firstPresent = async (
-  cwd: string,
-  candidates: string[],
-): Promise<string | undefined> => {
+export const allPresent = async (cwd: string, candidates: string[]): Promise<string[]> => {
   const found = await Promise.all(candidates.map(async (candidate) => {
     return await entryExists(join(cwd, candidate)) ? candidate : undefined;
   }));
 
-  return found.find((candidate) => {
+  return found.filter((candidate) => {
     return candidate !== undefined;
   });
 };

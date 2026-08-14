@@ -1,6 +1,7 @@
 import { hasTests } from '../../model/answers/answers';
 import { targetFor } from '../../model/targets';
 import { type Artifact } from '../artifact/artifact';
+import { projectSpelling } from '../project-shape/projectShape';
 
 import { mergeChecker } from './mergeChecker';
 
@@ -15,14 +16,13 @@ import type { Answers } from '../../model/answers/answers';
 // Both spellings, newest first: `run/` asks which one a project already holds before writing.
 export const SETUP_TESTS_CANDIDATES = ['__mocks__/setupTests.tsx', '__mocks__/setupTests.ts'];
 
-export const setupTestsPath = (answers: Answers, existing?: string): string => {
-  if (existing !== undefined) {
-    return existing;
-  }
-
-  return targetFor(answers).tsconfig.jsx === 'react-jsx'
+// The target's own spelling where the project has it, the project's own otherwise. See `projectSpelling`.
+export const setupTestsPath = (answers: Answers, present: readonly string[] = []): string => {
+  const own = targetFor(answers).tsconfig.jsx === 'react-jsx'
     ? '__mocks__/setupTests.tsx'
     : '__mocks__/setupTests.ts';
+
+  return projectSpelling(own, present);
 };
 
 // Throws rather than no-op: a silent miss on a drifted anchor would ship the strict floor to a relaxed project.

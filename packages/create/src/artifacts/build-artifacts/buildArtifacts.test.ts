@@ -395,7 +395,10 @@ describe('the shipped test setup', () => {
    * than at the one this version would write.
    */
   it('keeps the setup spelling a project already has, config included', () => {
-    const artifacts = buildArtifacts(answersFor({ target: 'react' }), '__mocks__/setupTests.ts');
+    const artifacts = buildArtifacts(
+      answersFor({ target: 'react' }),
+      { setupTests: ['__mocks__/setupTests.ts'], styleEntries: [] },
+    );
 
     const targets = artifacts.map((artifact) => {
       return artifact.target;

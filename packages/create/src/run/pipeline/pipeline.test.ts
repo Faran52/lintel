@@ -24,6 +24,7 @@ import {
 } from 'vitest';
 
 import { parsePackageJson } from '../../artifacts/package-json/emitPackageJson';
+import { STYLE_ENTRY_CANDIDATES } from '../../artifacts/style-entry/styleEntryPath';
 import {
   type Agent,
   type Answers,
@@ -1322,5 +1323,85 @@ describe('the eslint --fix pass', () => {
       'stylelint --fix could not run; run it yourself once dependencies are installed',
     ]);
     expect(await exists(join(cwd, 'eslint.config.js'))).toBe(true);
+  });
+});
+
+/**
+ * Both routes that write artifacts plan from what the directory already holds, and they have to read it the same way.
+ * They did not: `sync` looked the style entry up and `runPipeline` looked up the setup file alone, so a project keeping
+ * its stylesheet anywhere but its target's default was handed a second one nothing imports on every `--skip-scaffold`
+ * run, which is the exact defect the lookup was added to stop. One `readProjectShape` feeds both now.
+ */
+describe('what create and sync each discover about a project', () => {
+  const withTailwind = (): Answers => {
+    return answersFor({ libraries: ['tailwind'] });
+  };
+
+  const plant = async (relative: string, text = ''): Promise<void> => {
+    await mkdir(join(cwd, relative, '..'), { recursive: true });
+    await writeFile(join(cwd, relative), text, 'utf8');
+  };
+
+  const styleEntriesIn = (targets: string[]): string[] => {
+    return targets.filter((target) => {
+      return STYLE_ENTRY_CANDIDATES.includes(target);
+    });
+  };
+
+  const generateWith = async (answers: Answers): Promise<string[]> => {
+    const written: string[] = [];
+
+    await runPipeline({
+      name: 'demo-app',
+      cwd,
+      answers,
+      skip: ['scaffold', 'install'],
+      onWrite: (path) => {
+        written.push(path);
+      },
+    });
+
+    return written;
+  };
+
+  it("merges tailwind into the project's own stylesheet rather than writing a second one", async () => {
+    await plant('src/styles/tailwind.css');
+
+    const written = await generateWith(withTailwind());
+
+    expect(styleEntriesIn(written)).toEqual(['src/styles/tailwind.css']);
+    expect(await exists(join(cwd, 'src/index.css'))).toBe(false);
+  });
+
+  /**
+   * The guard against the next discovered file reaching one route only. Given one directory, the two plan the same
+   * stylesheet: `sync` is asked before anything is written, so this compares what each route made of the project
+   * rather than what the first one left behind for the second to find.
+   */
+  it('plans the same stylesheet as sync does, from the same directory', async () => {
+    await plant('src/styles/tailwind.css');
+
+    const planned = (await planSync(cwd, withTailwind())).entries.map((entry) => {
+      return entry.target;
+    });
+
+    expect(styleEntriesIn(await generateWith(withTailwind())))
+      .toEqual(styleEntriesIn(planned));
+  });
+
+  /**
+   * The setup file is the other discovered spelling, and a React project generated before it became `.tsx` keeps `.ts`.
+   * Asserted on the file that names it rather than on the write list, because the setup artifact is preserved: an
+   * existing one is left alone, so misreading the spelling shows up as a second file beside it and a config pointing
+   * at the one the project does not have.
+   */
+  it("keeps the setup spelling the project already has, rather than its target's", async () => {
+    await plant('__mocks__/setupTests.ts');
+
+    await generateWith(answersFor({ target: 'react' }));
+
+    expect(await exists(join(cwd, '__mocks__/setupTests.tsx'))).toBe(false);
+    expect(await readFile(join(cwd, 'vitest.config.ts'), 'utf8'))
+      .toContain('__mocks__/setupTests.ts');
   });
 });

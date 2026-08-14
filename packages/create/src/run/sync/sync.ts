@@ -2,16 +2,11 @@ import { rm, rmdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { buildArtifacts, GENERATED_AGENT_TARGETS } from '../../artifacts';
-import { SETUP_TESTS_CANDIDATES } from '../../artifacts/banned-patterns/checkerArtifact';
-import { STYLE_ENTRY_CANDIDATES } from '../../artifacts/style-entry/styleEntryPath';
 import { git } from '../git/git';
 import { applyArtifact } from '../project-files/projectFiles';
+import { readProjectShape } from '../project-shape/readProjectShape';
 import { contentOf } from '../shipped-assets/shippedAssets';
-import {
-  entryExists,
-  firstPresent,
-  readIfPresent,
-} from '../utils/fsUtils';
+import { entryExists, readIfPresent } from '../utils/fsUtils';
 
 import type { Answers } from '../../model/answers/answers';
 
@@ -67,10 +62,9 @@ export const planSync = async (cwd: string, answers: Answers): Promise<SyncPlan>
   const entries: SyncEntry[] = [];
   const expected = new Set<string>();
 
-  const existingSetup = await firstPresent(cwd, SETUP_TESTS_CANDIDATES);
-  const existingStyleEntry = await firstPresent(cwd, STYLE_ENTRY_CANDIDATES);
+  const project = await readProjectShape(cwd);
 
-  for (const artifact of buildArtifacts(answers, existingSetup, '', existingStyleEntry)) {
+  for (const artifact of buildArtifacts(answers, project)) {
     expected.add(artifact.target);
 
     const path = join(cwd, artifact.target);
@@ -147,10 +141,9 @@ export const applySync = async (
   const removed: string[] = [];
   const expected = new Set<string>();
 
-  const existingSetup = await firstPresent(cwd, SETUP_TESTS_CANDIDATES);
-  const existingStyleEntry = await firstPresent(cwd, STYLE_ENTRY_CANDIDATES);
+  const project = await readProjectShape(cwd);
 
-  for (const artifact of buildArtifacts(answers, existingSetup, '', existingStyleEntry)) {
+  for (const artifact of buildArtifacts(answers, project)) {
     expected.add(artifact.target);
 
     if (!targets.includes(artifact.target)) {

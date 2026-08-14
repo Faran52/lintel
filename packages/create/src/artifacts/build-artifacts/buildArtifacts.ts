@@ -18,6 +18,7 @@ import { emitEslintConfig } from '../eslint-config/emitEslintConfig';
 import { mergeGitignore } from '../gitignore/mergeGitignore';
 import { mergePackageJson } from '../package-json/mergePackageJson';
 import { mergePnpmWorkspace } from '../pnpm-workspace/mergePnpmWorkspace';
+import { EMPTY_PROJECT, type ProjectShape } from '../project-shape/projectShape';
 import { mergeStyleEntry } from '../style-entry/mergeStyleEntry';
 import { styleEntryPath } from '../style-entry/styleEntryPath';
 import { emitStylelintConfig } from '../stylelint-config/emitStylelintConfig';
@@ -44,16 +45,17 @@ const setupSources = (answers: Answers, target: TargetRecord): string[] => {
  * alone for exactly that reason, so a project that already existed never gained a block added to either: the
  * `peerDependencyRules` allowance shipped in 1.2.0 reached new projects and no old one, which a real migration found.
  *
- * `existingSetup` preserves a project's setup spelling.
+ * `project` is what the directory already holds, in one record rather than an argument per discovered file. Loose
+ * arguments cost a shipped defect: `sync` passed the style entry and `runPipeline` did not, so `--skip-scaffold`
+ * handed a project a second stylesheet nothing imported. See `ProjectShape`.
  */
 export const buildArtifacts = (
   answers: Answers,
-  existingSetup?: string,
+  project: ProjectShape = EMPTY_PROJECT,
   name = '',
-  existingStyleEntry?: string,
 ): Artifact[] => {
   const target = targetFor(answers);
-  const setup = setupTestsPath(answers, existingSetup);
+  const setup = setupTestsPath(answers, project.setupTests);
   const viteConfig = emitViteConfig(answers);
   const astroConfig = emitAstroConfig(answers);
   const vitestConfig = emitVitestConfig(answers, setup);
@@ -83,7 +85,7 @@ export const buildArtifacts = (
    * path is the project's own where it has one: a reference project keeping its entry at `src/styles/tailwind.css`
    * was handed a second `src/style.css` that nothing imported, so the merge guaranteed nothing.
    */
-  const styleEntry = styleEntryPath(answers, existingStyleEntry);
+  const styleEntry = styleEntryPath(answers, project.styleEntries);
 
   if (hasLibrary(answers, 'tailwind') && styleEntry !== undefined) {
     artifacts.push(merged('standard', styleEntry, mergeStyleEntry));

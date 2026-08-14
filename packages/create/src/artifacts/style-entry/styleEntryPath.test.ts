@@ -20,13 +20,13 @@ const answersFor = (target: TargetId): Answers => {
 
 describe('styleEntryPath', () => {
   it("takes the project's own entry over the target's default", () => {
-    expect(styleEntryPath(answersFor('webextension'), 'src/styles/tailwind.css'))
+    expect(styleEntryPath(answersFor('webextension'), ['src/styles/tailwind.css']))
       .toBe('src/styles/tailwind.css');
   });
 
   it('falls back to the target default when the project has none', () => {
-    expect(styleEntryPath(answersFor('webextension'))).toBe('src/style.css');
-    expect(styleEntryPath(answersFor('next'))).toBe('src/app/globals.css');
+    expect(styleEntryPath(answersFor('webextension'), [])).toBe('src/style.css');
+    expect(styleEntryPath(answersFor('next'), [])).toBe('src/app/globals.css');
   });
 
   /**
@@ -44,5 +44,25 @@ describe('styleEntryPath', () => {
 
     expect(declared.length).toBeGreaterThan(0);
     expect(STYLE_ENTRY_CANDIDATES).toEqual(expect.arrayContaining(declared));
+  });
+});
+
+/**
+ * A project can hold several of these at once. One keeping the standard's entry and a `styles/global.css` beside it
+ * was read as the second, which moved the Tailwind import out of the file every consumer already pulls in.
+ */
+describe('a project holding more than one candidate', () => {
+  it("takes the target's own entry over another the project also has", () => {
+    expect(styleEntryPath(
+      answersFor('webextension'),
+      ['src/styles/global.css', 'src/style.css'],
+    )).toBe('src/style.css');
+  });
+
+  it('takes the discovered one when the target default is absent', () => {
+    expect(styleEntryPath(
+      answersFor('webextension'),
+      ['src/styles/global.css'],
+    )).toBe('src/styles/global.css');
   });
 });

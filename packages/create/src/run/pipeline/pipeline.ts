@@ -4,7 +4,6 @@ import { dirname, join } from 'node:path';
 import { env } from 'node:process';
 
 import { type Artifact, buildArtifacts } from '../../artifacts';
-import { SETUP_TESTS_CANDIDATES } from '../../artifacts/banned-patterns/checkerArtifact';
 import { emitManifest } from '../../artifacts/manifest/emitManifest';
 import { emitReadme } from '../../artifacts/readme/emitReadme';
 import { browsersOf, hasTests } from '../../model/answers/answers';
@@ -18,10 +17,11 @@ import {
 import { nextStep, runFixPass } from '../fix-pass/fixPass';
 import { git } from '../git/git';
 import { applyArtifact, writeProjectFile } from '../project-files/projectFiles';
+import { readProjectShape } from '../project-shape/readProjectShape';
 import { repairScaffoldedOutput } from '../repair/repair';
 import { rewriteScaffoldedSource } from '../rewrite/rewrite';
 import { ASSETS_ROOT } from '../shipped-assets/shippedAssets';
-import { exists, firstPresent } from '../utils/fsUtils';
+import { exists } from '../utils/fsUtils';
 
 import type { Answers, PackageManager } from '../../model/answers/answers';
 
@@ -262,8 +262,17 @@ const STAGE_RUNNERS: Record<Stage, StageRunner> = {
 };
 
 export const runPipeline = async (options: PipelineOptions): Promise<void> => {
-  const existingSetup = await firstPresent(options.cwd, SETUP_TESTS_CANDIDATES);
-  const artifacts = buildArtifacts(options.answers, existingSetup, options.name);
+  /**
+   * Read before the stages run, so this is the directory as the user had it: with `--skip-scaffold` that is the
+   * project's own arrangement, and at birth it is empty, which is the answer that hands a new project its target's
+   * default. Reading after stage 1 instead would let a scaffolder's own file stand in for a project's choice, and
+   * every scaffolder's stylesheet is already what its target record declares.
+   */
+  const artifacts = buildArtifacts(
+    options.answers,
+    await readProjectShape(options.cwd),
+    options.name,
+  );
 
   for (const stage of STAGES) {
     // Skipped with lint: `--skip lint` means somebody else's rules, and fixing against those is an unasked-for edit.
