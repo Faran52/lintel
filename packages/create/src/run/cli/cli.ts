@@ -197,20 +197,19 @@ const runSync = async (options: CliOptions, answers: Answers): Promise<void> => 
   }
 };
 
+/**
+ * A name that cannot be a package name, refused before anything runs rather than at install.
+ *
+ * The argument only. A run with no argument takes the directory's name, and that one is left alone deliberately: a
+ * directory is not chosen as a package name and often cannot be one, so refusing `~/Projects/MyApp` would stop a run
+ * over something the user never typed. Adopting a directory is exactly what `--skip-scaffold` is for.
+ */
 const projectNameError = (options: CliOptions): string | undefined => {
-  if (options.command === 'sync') {
+  if (options.command === 'sync' || options.name === '') {
     return undefined;
   }
 
-  if (options.name !== '' && !isValidProjectName(options.name)) {
-    return `Project name must be ${PROJECT_NAME_RULE}.`;
-  }
-
-  if (options.yes && options.name === '' && !options.skip.includes('scaffold')) {
-    return 'A project name is required with --yes.';
-  }
-
-  return undefined;
+  return isValidProjectName(options.name) ? undefined : `Project name must be ${PROJECT_NAME_RULE}.`;
 };
 
 // Every reason to refuse the argv itself, in the order a user meets them, so `main` carries one bail-out rather than

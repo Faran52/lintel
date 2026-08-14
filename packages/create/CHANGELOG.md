@@ -4,11 +4,11 @@
 
 ### Changed
 
-- **A non-interactive create needs its project name.** `--yes` means the defaults on purpose, and the name is
-  the one answer no default can supply, so a run that passes `--yes` without one now stops rather than
-  scaffolding under an empty name. `--skip-scaffold` is exempt, since that run adopts a directory that already
-  has a name. A name that is not a valid npm package name is refused up front instead of at install, and npm's
-  two reserved names, `node_modules` and `favicon.ico`, are refused with the rest.
+- **A project name argument is checked before the run.** A name that npm could not carry was written into
+  `package.json` and only failed later; it is refused at argv now, npm's two reserved names, `node_modules` and
+  `favicon.ico`, among them. The argument only: a run without one takes the directory's name, and a directory
+  is not chosen as a package name and often cannot be one, so `create --yes` inside a directory you already
+  made still scaffolds into it under its own name.
 - **A positional argument past the name is refused.** `create my-app extra` used to drop `extra` in silence,
   which reads as accepted. Both it and an unknown option now stop the run with a message and exit 1; the
   unknown option previously escaped as an unhandled `TypeError` and a Node stack trace.

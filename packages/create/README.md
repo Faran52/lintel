@@ -11,9 +11,9 @@ pnpm create @linteljs my-app
 ```
 
 Use the package manager you have. The argument is the project name. Leave it out to answer that question in
-the CLI. Names use lowercase letters, digits, dots, dashes, and underscores, and must start with a letter or
-digit, avoid npm's reserved names, and contain no more than 214 characters. Extra positional arguments are
-rejected.
+the CLI, or to take the name of the directory you are in. A name you pass uses lowercase letters, digits, dots,
+dashes and underscores, starts with a letter or digit, is not one of npm's reserved names, and is at most 214
+characters. Anything past the name is rejected rather than ignored.
 
 | Runner | Short form | Long form |
 | --- | --- | --- |
@@ -97,7 +97,8 @@ plugins.
   --help, -h
 ```
 
-For a non-interactive create, pass both the project name and `--yes`. Ctrl+C writes nothing.
+The CLI refuses a non-interactive run unless you pass `--yes`. With no name argument it uses the directory's,
+so `mkdir my-app && cd my-app && create --yes` needs nothing else. Ctrl+C writes nothing.
 
 ## Existing projects and updates
 

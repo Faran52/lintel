@@ -1,4 +1,5 @@
 import {
+  mkdir,
   mkdtemp,
   readFile,
   readlink,
@@ -183,7 +184,6 @@ describe('main: what it prints and what it returns', () => {
 
   it.each([
     ['an invalid project name', ['My-App', '--skip-scaffold', '--no-install', '--yes'], 'Project name must be'],
-    ['a missing project name with --yes', ['--yes'], 'A project name is required with --yes'],
     ['an extra create argument', ['demo-app', 'extra', '--yes'], 'Unexpected argument: extra'],
     ['extra create arguments', ['demo-app', 'extra', 'more', '--yes'], 'Unexpected arguments: extra, more'],
     ['an extra sync argument', ['sync', 'extra'], 'Unexpected argument: extra'],
@@ -197,6 +197,31 @@ describe('main: what it prints and what it returns', () => {
     expect(errors).toHaveLength(1);
     expect(errors[0]?.startsWith(message)).toBe(true);
     expect(await exists(join(project, 'eslint.config.js'))).toBe(false);
+  });
+
+  /**
+   * `--yes` means the defaults on purpose, and a directory already standing is the default for the one answer it can
+   * supply. `mkdir demo-app && cd demo-app && create --yes` scaffolds into it under its own name, with no argument and
+   * no question. A guard requiring the argument was written and taken back out for refusing exactly this.
+   */
+  it('scaffolds into the directory it stands in when --yes gave no name', async () => {
+    const named = join(project, 'demo-app');
+
+    await mkdir(named);
+    chdir(named);
+    await plantBinary(join(project, 'fake-bin'), 'pnpm', [
+      "require('node:fs').mkdirSync(process.argv[4], { recursive: true });",
+    ]);
+
+    try {
+      const { code } = await runMain(['--no-install', '--yes']);
+
+      expect(code).toBe(0);
+      expect(parsePackageJson(await readFile(join(named, 'package.json'), 'utf8')).name).toBe('demo-app');
+    }
+    finally {
+      await rm(join(project, 'fake-bin'), { recursive: true, force: true });
+    }
   });
 
   // The name used to be required up front. It is a question now, so a bare run is only refused for the reason any
