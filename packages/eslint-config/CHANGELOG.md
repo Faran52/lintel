@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.4
+
+No change to the layers. The three versions move together, so this carries the caught-value carve-out
+in the type floor `@linteljs/create` ships.
+
 ## 1.4.3
 
 No change to the layers. The three versions move together, so this carries the `sync` dependency reconciliation in

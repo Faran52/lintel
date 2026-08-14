@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.4.4
+
+### Added
+
+- **`unknown` is granted for a caught value.** `catch` binds `unknown` by language rule under
+  `useUnknownInCatchVariables`, so a single-argument helper turning a throw into something readable,
+  `(error: unknown): string`, has no other parameter type available. The floor blocked it, which left
+  a project holding one exempting the whole file and hiding every other violation in it along with it.
+
+  Held to the tightest reading that still covers the case: the whole parameter list must be one
+  argument named for a throw (`error`, `cause`, `reason`). A second parameter means the function is
+  doing something else and its `unknown` is load-bearing, which the tests pin. This is the only
+  carve-out keyed on a name rather than a shape, because TypeScript gives a caught value no type of
+  its own to key on, and `type-standards.md` says so where it grants it.
+
+  An implicit `catch (error)` was never affected: it carries no annotation, so there is nothing to match.
+
 ## 1.4.3
 
 ### Fixed
