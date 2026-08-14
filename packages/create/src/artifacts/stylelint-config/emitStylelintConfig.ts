@@ -30,12 +30,9 @@ const CSS_MODULE_OVERRIDE: StyleOverride = {
 };
 
 /**
- * `@custom-variant` is how Tailwind 4 defines a variant, and its body is a bare `&` rule by design: the at-rule is
- * the scoping root, and `@slot` marks where the wrapped declarations land. stylelint reads that `&` as dangling.
- *
- * `stylelint-config-tailwindcss` already teaches `at-rule-no-unknown` about `custom-variant` and stops there, so the
- * at-rule parses and its contents still report. Scoped off for a Tailwind project only, which is the one place the
- * shape is idiomatic rather than a mistake.
+ * A Tailwind 4 `@custom-variant` body is a bare `&` rule by design, with the at-rule as its scoping root, which
+ * stylelint reads as dangling. `stylelint-config-tailwindcss` teaches `at-rule-no-unknown` about it and stops there.
+ * Off for a Tailwind project only, the one place the shape is idiomatic rather than a mistake.
  */
 const TAILWIND_RULES = [
   'rules: {',

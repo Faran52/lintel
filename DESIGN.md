@@ -91,11 +91,10 @@ These are decisions, not omissions. Re-adding any of them needs an argument.
   rewrite that project's `eslint.config.js`, `tsconfig.json` and scripts as TypeScript over source that
   is not, which is not recoverable without git.
 
-  It is the parser that refuses, and deliberately not a second list in `run/cli`. That existed, as a
-  field-by-field whitelist rebuilding `Answers` from the parsed config, and it cost more than it
-  bought: an answer it did not name was dropped in silence rather than refused, which is how a
-  devtools-panel project came to be replanned as a popup-and-background one. One list that throws
-  beats two lists where the quieter one wins.
+  It is the parser that refuses, and deliberately not a second list in `run/cli`. That one rebuilt
+  `Answers` field by field and dropped in silence any answer it did not name, which is how a
+  devtools-panel project came to be replanned as a popup one. One list that throws beats two where
+  the quieter one wins.
 - **No Prettier.** `@stylistic/eslint-plugin` owns formatting as lint rules. One tool, one config,
   no argument about who owns whitespace.
 - **No Stryker, no MSW** by default. Both are worth adding to a project that needs them, and

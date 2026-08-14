@@ -12,11 +12,8 @@ export interface CopiedAssets {
   sources: string[];
   /**
    * Depends on answers, not the file: type-standards.md's shared glob names .vue and .svelte for every target,
-   * including pure React and TypeScript.
-   *
-   * `current` is whatever the project has, or `null` on a first write, for the one copied file that is half the
-   * project's: the checker holds the standard's pattern list and the project's own exemptions in one file, so it is
-   * neither emitted nor preserved but carried over.
+   * including pure React and TypeScript. `current` is the project's own text, or `null` on a first write, for the
+   * checker, which is half the standard's and half the project's.
    */
   transform?: (source: string, current: string | null) => string;
 }

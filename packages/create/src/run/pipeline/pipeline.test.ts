@@ -933,11 +933,7 @@ describe('sync', () => {
     }
   });
 
-  /**
-   * The file holds the standard's pattern list and the project's own exemptions, so it is merged rather than
-   * preserved: preserving froze both halves and a carve-out added to the floor reached no existing project, while
-   * emitting would have deleted the exemptions and the reasons written beside them.
-   */
+  // Merged rather than preserved: preserving froze the standard's half along with the project's.
   it('carries the project blocks of checkBannedPatterns over the shipped floor', async () => {
     await generate({});
 
@@ -1327,10 +1323,8 @@ describe('the eslint --fix pass', () => {
 });
 
 /**
- * Both routes that write artifacts plan from what the directory already holds, and they have to read it the same way.
- * They did not: `sync` looked the style entry up and `runPipeline` looked up the setup file alone, so a project keeping
- * its stylesheet anywhere but its target's default was handed a second one nothing imports on every `--skip-scaffold`
- * run, which is the exact defect the lookup was added to stop. One `readProjectShape` feeds both now.
+ * Both routes that write artifacts read the directory, and they have to read it the same way. `sync` looked the style
+ * entry up and `runPipeline` did not, so `--skip-scaffold` wrote a second stylesheet nothing imports.
  */
 describe('what create and sync each discover about a project', () => {
   const withTailwind = (): Answers => {
@@ -1373,11 +1367,8 @@ describe('what create and sync each discover about a project', () => {
     expect(await exists(join(cwd, 'src/index.css'))).toBe(false);
   });
 
-  /**
-   * The guard against the next discovered file reaching one route only. Given one directory, the two plan the same
-   * stylesheet: `sync` is asked before anything is written, so this compares what each route made of the project
-   * rather than what the first one left behind for the second to find.
-   */
+  // The guard against the next discovered file reaching one route only. `sync` is asked before anything is written,
+  // so this compares what each made of the same directory rather than what one left behind for the other.
   it('plans the same stylesheet as sync does, from the same directory', async () => {
     await plant('src/styles/tailwind.css');
 
@@ -1389,12 +1380,8 @@ describe('what create and sync each discover about a project', () => {
       .toEqual(styleEntriesIn(planned));
   });
 
-  /**
-   * The setup file is the other discovered spelling, and a React project generated before it became `.tsx` keeps `.ts`.
-   * Asserted on the file that names it rather than on the write list, because the setup artifact is preserved: an
-   * existing one is left alone, so misreading the spelling shows up as a second file beside it and a config pointing
-   * at the one the project does not have.
-   */
+  // The other discovered spelling: a React project generated before it became `.tsx` keeps `.ts`. Asserted on the
+  // config that names it, since the setup file is preserved and a misread shows up as a second file beside it.
   it("keeps the setup spelling the project already has, rather than its target's", async () => {
     await plant('__mocks__/setupTests.ts');
 

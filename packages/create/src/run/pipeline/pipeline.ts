@@ -262,12 +262,8 @@ const STAGE_RUNNERS: Record<Stage, StageRunner> = {
 };
 
 export const runPipeline = async (options: PipelineOptions): Promise<void> => {
-  /**
-   * Read before the stages run, so this is the directory as the user had it: with `--skip-scaffold` that is the
-   * project's own arrangement, and at birth it is empty, which is the answer that hands a new project its target's
-   * default. Reading after stage 1 instead would let a scaffolder's own file stand in for a project's choice, and
-   * every scaffolder's stylesheet is already what its target record declares.
-   */
+  // Read before the stages, so this is the directory as the user had it rather than as a scaffolder left it: empty at
+  // birth, which is the answer that hands a new project its target's default.
   const artifacts = buildArtifacts(
     options.answers,
     await readProjectShape(options.cwd),

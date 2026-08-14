@@ -61,8 +61,7 @@ export const applyArtifact = async (
     return false;
   }
 
-  // Read for a transform too, not only a merge: the checker is copied and still carries the project's own blocks,
-  // so its transform needs whatever is already there.
+  // A transform too, not only a merge: the checker is copied and still carries the project's own blocks.
   const reads = 'merge' in artifact.content || 'transform' in artifact.content;
   const current = reads ? await readIfPresent(path) : null;
 

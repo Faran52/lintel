@@ -17,6 +17,15 @@ import {
   TYPE_SAFETY_CHOICES,
 } from '../answers/answers';
 
+/**
+ * A recorded config is the answers, plus two fields describing the file. `extends`, so the routes that plan from one
+ * pass it straight to a plan: `run/cli` rebuilt `Answers` from it field by field, and dropped in silence any answer it
+ * had not been taught about, which is how a devtools-panel project came back replanned as a popup one. This parser is
+ * the only list, and it refuses an unknown property by name.
+ *
+ * `$schema` and `schemaVersion` come along. Both are validated to one permitted value, and `emitLintelConfig` writes
+ * those same constants itself.
+ */
 export interface LintelConfig extends Answers {
   $schema: typeof CONFIG_SCHEMA_URL;
   schemaVersion: typeof CURRENT_SCHEMA_VERSION;

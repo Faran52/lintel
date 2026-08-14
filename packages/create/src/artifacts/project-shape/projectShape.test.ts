@@ -9,10 +9,7 @@ import { EMPTY_PROJECT, projectSpelling } from './projectShape';
 describe('projectSpelling', () => {
   const CANDIDATES = ['src/styles/global.css', 'src/style.css'];
 
-  /**
-   * The defect this exists for: a project holding both the standard's entry and one that sorts earlier was read as
-   * the earlier one, which moved the Tailwind import out of the file every consumer already pulls in.
-   */
+  // The defect: a project holding the standard's entry and one sorting earlier was read as the earlier one.
   it("takes the target's own over another the project also has, whatever the order", () => {
     expect(projectSpelling('src/style.css', CANDIDATES)).toBe('src/style.css');
     expect(projectSpelling('src/style.css', [...CANDIDATES].reverse())).toBe('src/style.css');

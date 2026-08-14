@@ -29,10 +29,7 @@ describe('styleEntryPath', () => {
     expect(styleEntryPath(answersFor('next'), [])).toBe('src/app/globals.css');
   });
 
-  /**
-   * A default missing from the candidate list is a project whose own entry could never be found, so it would be
-   * handed a second one beside it. That is the defect this exists for, and it is a coupling a test has to hold.
-   */
+  // A default missing from the candidates is an entry that can never be found, so a second is written beside it.
   it('can discover every default a target declares', () => {
     const declared = TARGET_IDS
       .map((target) => {
@@ -47,10 +44,7 @@ describe('styleEntryPath', () => {
   });
 });
 
-/**
- * A project can hold several of these at once. One keeping the standard's entry and a `styles/global.css` beside it
- * was read as the second, which moved the Tailwind import out of the file every consumer already pulls in.
- */
+// A project keeping a `styles/global.css` beside the standard's entry was read as the second of the two.
 describe('a project holding more than one candidate', () => {
   it("takes the target's own entry over another the project also has", () => {
     expect(styleEntryPath(

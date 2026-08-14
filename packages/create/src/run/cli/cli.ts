@@ -109,25 +109,6 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
 };
 
 /**
- * A recorded config is the answers to plan from, which is what `LintelConfig extends Answers` says, so there is no
- * conversion step here at all.
- *
- * There was one, rebuilding `Answers` field by field, and it cost more than it bought: an answer it did not name was
- * dropped in silence rather than refused, so `surfaces` shipped and a devtools-panel project replanned as a
- * popup-and-background one. The whitelist was there to stop a `typescript: false` from an older config reaching a
- * plan, and it is not what stops that: `parseLintelConfig` refuses a property it does not know, naming the field,
- * before this is reached. Two lists of the same answers, one throwing and one dropping quietly, is a drift the quiet
- * one always wins.
- *
- * `$schema` and `schemaVersion` come along, and describe the file rather than the project. Both are validated to a
- * single permitted value, so the only place they can be seen again is `emitLintelConfig`, which writes those same two
- * constants itself.
- */
-const answersIn = async (cwd: string): Promise<Answers> => {
-  return await readLintelConfig(cwd);
-};
-
-/**
  * The name comes back beside the answers because only the questionnaire can supply a missing one, and every route
  * that skips the questionnaire already knows it: `sync` never scaffolds, `--skip-scaffold` keeps the directory's own
  * name, and `--yes` means the argument was the last word on it.
@@ -141,12 +122,13 @@ const askedFrom = async (
     return { name: options.name, answers };
   };
 
+  // The parsed config is the plan's answers, with no conversion between the two. See `LintelConfig`.
   if (options.command === 'sync') {
-    return named(await answersIn(options.cwd));
+    return named(await readLintelConfig(options.cwd));
   }
 
   if (options.skip.includes('scaffold') && await entryExists(join(options.cwd, CONFIG_PATH))) {
-    return named(await answersIn(options.cwd));
+    return named(await readLintelConfig(options.cwd));
   }
 
   if (options.yes) {

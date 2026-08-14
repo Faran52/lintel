@@ -39,10 +39,7 @@ describe('mergeStyleEntry', () => {
   });
 });
 
-/**
- * A real project's entry read `@import url("tailwindcss") source(none)`, restricting which files Tailwind scans. The
- * merge did not recognise the `url()` form, added a second unrestricted import above it, and undid that silently.
- */
+// A real entry read `@import url("tailwindcss") source(none)`; unrecognised, a second unrestricted import went in.
 describe('an entry that already imports tailwind another way', () => {
   it.each([
     ['the url form', '@import url("tailwindcss");\n'],

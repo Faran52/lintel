@@ -54,9 +54,8 @@ export const readIfPresent = async (path: string): Promise<string | null> => {
 };
 
 /**
- * Every one of `candidates` present under `cwd`, relative as given, in the order given. All of them rather than the
- * first: a project can hold two spellings of the same file, and which one it means is the caller's decision, not this
- * list's order. See `projectSpelling`, which makes it.
+ * Every one of `candidates` present under `cwd`, relative as given, in the order given. All of them, not the first: a
+ * project can hold two spellings, and which one it means is `projectSpelling`'s decision rather than this list's order.
  */
 export const allPresent = async (cwd: string, candidates: string[]): Promise<string[]> => {
   const found = await Promise.all(candidates.map(async (candidate) => {

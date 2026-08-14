@@ -5,11 +5,8 @@
 
 export const TAILWIND_IMPORT = '@import "tailwindcss";';
 
-/**
- * Either quoting, and the `url()` form, since a project that wrote the line itself may have used any of them. A real
- * project's entry read `@import url("tailwindcss") source(none)`, which this missed, so the merge added a second
- * unrestricted import above it and silently undid the scan restriction the project had chosen.
- */
+// Either quoting and the `url()` form: a project's own `@import url("tailwindcss") source(none)` read as no import at
+// all, so a second unrestricted one went in above it and undid the scan restriction.
 const IMPORTS_TAILWIND = /@import\s+(?:url\(\s*)?['"]tailwindcss['"]/;
 
 export const mergeStyleEntry = (current: string | null): string => {
