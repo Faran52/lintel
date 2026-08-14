@@ -1,18 +1,12 @@
-import type { Answers } from '../../model/answers/answers';
-
 /**
- * The checker file holds two things: the pattern list, which is the standard, and `PROJECT_SKIPPED` and
- * `PROJECT_BANNED`, which are the project's. Preserving it froze both, so a carve-out added to the floor reached
- * every new project and no existing one; emitting it would have deleted a project's exemptions and the reasons
- * written beside them.
- *
- * Merged, the two halves go where they belong: the shipped file supplies everything, then the project's own blocks
- * are lifted back over the empty ones the transform wrote.
+ * The checker holds the standard's pattern list and the project's own `PROJECT_SKIPPED` and `PROJECT_BANNED`.
+ * Preserving it froze both, emitting it would delete the project's half, so the shipped file supplies everything and
+ * the project's blocks are lifted back over the empty ones.
  */
 
 /**
- * Everything from the declaration to its closing `];`, which is what a project edits and what has to survive. Both
- * spellings count: a block with entries closes on its own line, and an empty one is `= [];` on the declaration line.
+ * The declaration through its closing `];`, empty on one line or with entries closing on a line of its own. Read as a
+ * whole line, since a reason written beside an entry quoting code (`arr[0];`) carries that pair and ended it early.
  */
 const blockOf = (source: string, name: string): string | null => {
   const opening = source.indexOf(`const ${name}`);
@@ -21,34 +15,39 @@ const blockOf = (source: string, name: string): string | null => {
     return null;
   }
 
-  const multiline = source.indexOf('\n];', opening);
-  const empty = source.indexOf('];', opening);
+  const rest = source.slice(opening);
+  // `split` with a limit of one answers exactly one element for any string, so this is the declaration line or all
+  // of what follows it, and never nothing.
+  const declaration = rest.split('\n', 1).join('');
 
-  if (multiline !== -1 && (empty === -1 || multiline < empty)) {
-    return source.slice(opening, multiline + 3);
+  if (declaration.includes('];')) {
+    return declaration;
   }
 
-  return empty === -1 ? null : source.slice(opening, empty + 2);
+  const closing = rest.indexOf('\n];');
+
+  return closing === -1 ? null : rest.slice(0, closing + 3);
 };
 
 const carriedOver = (shipped: string, current: string, name: string): string => {
   const theirs = blockOf(current, name);
   const ours = blockOf(shipped, name);
 
-  // A project that never edited its block, or a shipped file that stopped declaring one, leaves the shipped text.
-  return theirs === null || ours === null ? shipped : shipped.replace(ours, theirs);
-};
-
-export const mergeChecker = (
-  current: string | null,
-  shipped: (answers: Answers) => string,
-  answers: Answers,
-): string => {
-  const text = shipped(answers);
-
-  if (current === null) {
-    return text;
+  if (theirs === null || ours === null) {
+    // A project that never edited its block, or a shipped file that stopped declaring one.
+    return shipped;
   }
 
-  return carriedOver(carriedOver(text, current, 'PROJECT_SKIPPED'), current, 'PROJECT_BANNED');
+  // By function: `$&` or `$'` in a string replacement reads as the match and the text after it.
+  return shipped.replace(ours, () => {
+    return theirs;
+  });
+};
+
+export const mergeChecker = (shipped: string, current: string | null): string => {
+  if (current === null) {
+    return shipped;
+  }
+
+  return carriedOver(carriedOver(shipped, current, 'PROJECT_SKIPPED'), current, 'PROJECT_BANNED');
 };

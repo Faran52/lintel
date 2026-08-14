@@ -99,9 +99,7 @@ export const checkerArtifact = (answers: Answers): Artifact => {
       // Applies the type-safety floor, then the exemptions it cannot hold, writing both as values in the file the
       // project owns.
       transform: (source, current) => {
-        return mergeChecker(current, () => {
-          return withStarterSkips(withTypeSafety(source, answers), answers);
-        }, answers);
+        return mergeChecker(withStarterSkips(withTypeSafety(source, answers), answers), current);
       },
     },
   };
