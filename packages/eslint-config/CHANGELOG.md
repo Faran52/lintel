@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.2
+
+No change to the layers. The three versions move together, so this carries the hosted-extension JSX
+fix in `@linteljs/create`.
+
 ## 1.4.1
 
 No change to the layers. The three versions move together, so this carries the `ignores` answer in

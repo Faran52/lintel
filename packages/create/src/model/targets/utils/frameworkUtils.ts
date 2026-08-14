@@ -24,6 +24,11 @@ export interface FrameworkParts {
    * is what `@types/react` already answers for, and the two single-file-component frameworks have no JSX to type.
    */
   jsxImportSource?: string;
+  /**
+   * The `jsx` mode a host's tsconfig needs. Absent for the two single-file-component frameworks, which have no JSX at
+   * all. A host with no framework has no `jsx` either, so this is what a hosted one adds rather than overrides.
+   */
+  jsx?: 'preserve' | 'react-jsx';
   // The reactivity rule asset, relative to `assets/claude-rules/`.
   stateRules: string[];
 }
@@ -46,6 +51,7 @@ export const OUTSIDE_TESTS = 'process.env.VITEST === undefined';
 const PARTS: Record<HostedFramework, FrameworkParts> = {
   react: {
     framework: 'react',
+    jsx: 'react-jsx',
     componentGlob: 'src/**/*.tsx',
     vitePlugin: {
       imports: [
@@ -111,6 +117,7 @@ const PARTS: Record<HostedFramework, FrameworkParts> = {
   },
   solid: {
     framework: 'solid',
+    jsx: 'preserve',
     componentGlob: 'src/**/*.tsx',
     vitePlugin: {
       imports: ["import solid from 'vite-plugin-solid';"],

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.4.2
+
+### Fixed
+
+- **A hosted extension gets its framework's JSX settings.** `webextension` with `hostedFramework`
+  wired the Vite plugin and the dependencies and then never told TypeScript what the templates were,
+  so the emitted `tsconfig.json` carried no `jsx` and no `jsxImportSource` and every `.tsx` file in
+  the project failed to compile. Migrating a real Solid extension hit 213 `TS17004` and 245
+  `TS7026`, and the 237 `no-unsafe-*` findings behind those were all downstream of it: with no JSX
+  types every expression degrades to `error`.
+
+  `FrameworkParts` gains `jsx`, which is `react-jsx` for React and `preserve` for Solid and absent
+  for the two single-file-component frameworks, since they have no JSX to describe. A host with no
+  framework still has none, so this is an addition rather than an override. Astro is untouched: it
+  extends `astro/tsconfigs/strict` and needs the base's own `preserve` whichever framework it hosts.
+
 ## 1.4.1
 
 ### Added

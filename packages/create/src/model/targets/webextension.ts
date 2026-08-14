@@ -157,7 +157,16 @@ export const webextension: TargetBuilder = (answers) => {
       imports: [...hosted?.vitePlugin.imports ?? [], ...CRX.imports],
       calls: [...hosted?.vitePlugin.calls ?? [], ...CRX.calls],
     },
-    tsconfig: { types: browser.types },
+    /**
+     * The hosted framework's JSX settings, which a host with no framework has none of. Without them every `.tsx` file
+     * in the project fails to compile: a real migration hit 213 `TS17004` and 245 `TS7026`, because the axis wired the
+     * Vite plugin and the dependencies and then never told TypeScript what the templates were.
+     */
+    tsconfig: {
+      types: browser.types,
+      ...(hosted?.jsx === undefined ? {} : { jsx: hosted.jsx }),
+      ...(hosted?.jsxImportSource === undefined ? {} : { jsxImportSource: hosted.jsxImportSource }),
+    },
     ...(hosted?.testConditions === undefined ? {} : { testConditions: hosted.testConditions }),
     starterFiles: surfaceFiles(answers, browser),
     starterTests: [

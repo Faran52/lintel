@@ -7,6 +7,7 @@ import {
 import {
   type Answers,
   DEFAULT_ANSWERS,
+  type HostedFramework,
   type Library,
   TARGET_IDS,
   type TargetId,
@@ -18,6 +19,7 @@ import { emitEslintConfig } from '../eslint-config/emitEslintConfig';
 import { buildTsconfig, emitTsconfig } from './emitTsconfig';
 
 interface AnswerOverrides {
+  hostedFramework?: HostedFramework;
   target?: TargetId;
   testing?: Testing;
   libraries?: Library[];
@@ -230,5 +232,38 @@ describe('ambient types', () => {
   it('adds none to a target that declares none', () => {
     expect(buildTsconfig(answersFor({ target: 'react' })).compilerOptions.types)
       .not.toContain('chrome');
+  });
+});
+
+/**
+ * The axis wired the Vite plugin and the dependencies and then never told TypeScript what the templates were, so every
+ * `.tsx` file in a hosted extension failed to compile: a real migration hit 213 `TS17004` and 245 `TS7026`. A host
+ * without a framework still has no `jsx` at all, which is what makes this an addition rather than an override.
+ */
+describe('a hosted framework brings its own JSX settings', () => {
+  it('gives the extension solid’s mode and import source', () => {
+    const { compilerOptions } = buildTsconfig(
+      answersFor({ target: 'webextension', hostedFramework: 'solid' }),
+    );
+
+    expect(compilerOptions.jsx).toBe('preserve');
+    expect(compilerOptions.jsxImportSource).toBe('solid-js');
+  });
+
+  it('gives it react’s, which needs no import source', () => {
+    const { compilerOptions } = buildTsconfig(
+      answersFor({ target: 'webextension', hostedFramework: 'react' }),
+    );
+
+    expect(compilerOptions.jsx).toBe('react-jsx');
+    expect(compilerOptions).not.toHaveProperty('jsxImportSource');
+  });
+
+  // Vue and Svelte templates are single-file components, so there is no JSX for TypeScript to be told about.
+  it('adds none for a single-file-component framework, or for no framework at all', () => {
+    expect(buildTsconfig(answersFor({ target: 'webextension', hostedFramework: 'vue' })).compilerOptions)
+      .not.toHaveProperty('jsx');
+    expect(buildTsconfig(answersFor({ target: 'webextension' })).compilerOptions)
+      .not.toHaveProperty('jsx');
   });
 });
