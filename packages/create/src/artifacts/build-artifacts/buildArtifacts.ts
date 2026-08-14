@@ -19,6 +19,7 @@ import { mergeGitignore } from '../gitignore/mergeGitignore';
 import { mergePackageJson } from '../package-json/mergePackageJson';
 import { mergePnpmWorkspace } from '../pnpm-workspace/mergePnpmWorkspace';
 import { mergeStyleEntry } from '../style-entry/mergeStyleEntry';
+import { styleEntryPath } from '../style-entry/styleEntryPath';
 import { emitStylelintConfig } from '../stylelint-config/emitStylelintConfig';
 import { emitTsconfig } from '../tsconfig/emitTsconfig';
 import { emitViteConfig } from '../vite-config/emitViteConfig';
@@ -45,7 +46,12 @@ const setupSources = (answers: Answers, target: TargetRecord): string[] => {
  *
  * `existingSetup` preserves a project's setup spelling.
  */
-export const buildArtifacts = (answers: Answers, existingSetup?: string, name = ''): Artifact[] => {
+export const buildArtifacts = (
+  answers: Answers,
+  existingSetup?: string,
+  name = '',
+  existingStyleEntry?: string,
+): Artifact[] => {
   const target = targetFor(answers);
   const setup = setupTestsPath(answers, existingSetup);
   const viteConfig = emitViteConfig(answers);
@@ -72,9 +78,15 @@ export const buildArtifacts = (answers: Answers, existingSetup?: string, name = 
     artifacts.push(copied('src/typings/customTypes.d.ts', 'typings/customTypes.d.ts'));
   }
 
-  // Tailwind generates nothing until a stylesheet imports it, and only create-next-app writes that line itself.
-  if (hasLibrary(answers, 'tailwind') && target.styleEntry !== undefined) {
-    artifacts.push(merged('standard', target.styleEntry, mergeStyleEntry));
+  /**
+   * Tailwind generates nothing until a stylesheet imports it, and only create-next-app writes that line itself. The
+   * path is the project's own where it has one: a reference project keeping its entry at `src/styles/tailwind.css`
+   * was handed a second `src/style.css` that nothing imported, so the merge guaranteed nothing.
+   */
+  const styleEntry = styleEntryPath(answers, existingStyleEntry);
+
+  if (hasLibrary(answers, 'tailwind') && styleEntry !== undefined) {
+    artifacts.push(merged('standard', styleEntry, mergeStyleEntry));
   }
 
   /**

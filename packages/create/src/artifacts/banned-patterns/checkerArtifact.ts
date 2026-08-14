@@ -2,6 +2,8 @@ import { hasTests } from '../../model/answers/answers';
 import { targetFor } from '../../model/targets';
 import { type Artifact } from '../artifact/artifact';
 
+import { mergeChecker } from './mergeChecker';
+
 import type { Answers } from '../../model/answers/answers';
 
 /**
@@ -96,10 +98,11 @@ export const checkerArtifact = (answers: Answers): Artifact => {
       sources: ['scripts/checkBannedPatterns.ts'],
       // Applies the type-safety floor, then the exemptions it cannot hold, writing both as values in the file the
       // project owns.
-      transform: (source) => {
-        return withStarterSkips(withTypeSafety(source, answers), answers);
+      transform: (source, current) => {
+        return mergeChecker(current, () => {
+          return withStarterSkips(withTypeSafety(source, answers), answers);
+        }, answers);
       },
     },
-    preserve: true,
   };
 };

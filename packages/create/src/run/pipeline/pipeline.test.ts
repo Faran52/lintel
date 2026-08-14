@@ -932,17 +932,27 @@ describe('sync', () => {
     }
   });
 
-  it('never writes over an edited checkBannedPatterns, which holds the project list', async () => {
+  /**
+   * The file holds the standard's pattern list and the project's own exemptions, so it is merged rather than
+   * preserved: preserving froze both halves and a carve-out added to the floor reached no existing project, while
+   * emitting would have deleted the exemptions and the reasons written beside them.
+   */
+  it('carries the project blocks of checkBannedPatterns over the shipped floor', async () => {
     await generate({});
 
     const path = join(cwd, 'scripts/checkBannedPatterns.ts');
-    const edited = "const PROJECT_BANNED = [{ name: 'ours', re: /ours/ }];\n";
+    const ours = "const PROJECT_BANNED: BannedPattern[] = [\n  { name: 'ours', re: /ours/ },\n];";
+    const edited = (await readFile(path, 'utf8'))
+      .replace('const PROJECT_BANNED: BannedPattern[] = [];', ours);
+
     await writeFile(path, edited, 'utf8');
+    await applySync(cwd, answersFor({}), ['scripts/checkBannedPatterns.ts']);
 
-    const { written } = await applySync(cwd, answersFor({}), ['scripts/checkBannedPatterns.ts']);
+    const merged = await readFile(path, 'utf8');
 
-    expect(written).toEqual([]);
-    expect(await readFile(path, 'utf8')).toBe(edited);
+    expect(merged).toContain("{ name: 'ours', re: /ours/ },");
+    // And the standard's half is the shipped one rather than whatever the project froze.
+    expect(merged).toContain('CAUGHT_VALUE');
   });
 
   it('restores checkBannedPatterns when it is missing entirely', async () => {

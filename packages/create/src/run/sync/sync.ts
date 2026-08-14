@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 
 import { buildArtifacts, GENERATED_AGENT_TARGETS } from '../../artifacts';
 import { SETUP_TESTS_CANDIDATES } from '../../artifacts/banned-patterns/checkerArtifact';
+import { STYLE_ENTRY_CANDIDATES } from '../../artifacts/style-entry/styleEntryPath';
 import { git } from '../git/git';
 import { applyArtifact } from '../project-files/projectFiles';
 import { contentOf } from '../shipped-assets/shippedAssets';
@@ -67,8 +68,9 @@ export const planSync = async (cwd: string, answers: Answers): Promise<SyncPlan>
   const expected = new Set<string>();
 
   const existingSetup = await firstPresent(cwd, SETUP_TESTS_CANDIDATES);
+  const existingStyleEntry = await firstPresent(cwd, STYLE_ENTRY_CANDIDATES);
 
-  for (const artifact of buildArtifacts(answers, existingSetup)) {
+  for (const artifact of buildArtifacts(answers, existingSetup, '', existingStyleEntry)) {
     expected.add(artifact.target);
 
     const path = join(cwd, artifact.target);
@@ -146,8 +148,9 @@ export const applySync = async (
   const expected = new Set<string>();
 
   const existingSetup = await firstPresent(cwd, SETUP_TESTS_CANDIDATES);
+  const existingStyleEntry = await firstPresent(cwd, STYLE_ENTRY_CANDIDATES);
 
-  for (const artifact of buildArtifacts(answers, existingSetup)) {
+  for (const artifact of buildArtifacts(answers, existingSetup, '', existingStyleEntry)) {
     expected.add(artifact.target);
 
     if (!targets.includes(artifact.target)) {

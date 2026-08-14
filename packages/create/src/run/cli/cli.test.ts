@@ -561,18 +561,18 @@ describe('main: sync', () => {
   it('never proposes a preserved file that it would only have kept', async () => {
     await generated();
 
-    const script = join(project, 'scripts/checkBannedPatterns.ts');
-    const banned = "const PROJECT_BANNED = [{ name: 'ours', re: /ours/ }];\n";
+    const setup = join(project, '__mocks__/setupTests.tsx');
+    const own = '// the project own setup\n';
     const adapter = '# our own instructions\n';
 
-    await writeFile(script, banned, 'utf8');
+    await writeFile(setup, own, 'utf8');
     await writeFile(join(project, 'CLAUDE.md'), adapter, 'utf8');
 
     const { printed } = await runMain(['sync', '--yes', '--force']);
 
     expect(printed).toContain('Everything is already up to date.');
     expect(printed).not.toContain('wrote ');
-    expect(await readFile(script, 'utf8')).toBe(banned);
+    expect(await readFile(setup, 'utf8')).toBe(own);
     expect(await readFile(join(project, 'CLAUDE.md'), 'utf8')).toBe(adapter);
   });
 

@@ -202,22 +202,20 @@ describe('applySync', () => {
     expect(mode & 0o111).toBe(0o111);
   });
 
+  // The setup file, which is preserved outright: the checker is merged instead, since it holds the standard's
+  // pattern list as well as the project's own blocks.
   it('writes a preserved file when missing, and leaves it alone once it exists', async () => {
-    const first = await applySync(cwd, DEFAULT_ANSWERS, ['scripts/checkBannedPatterns.ts']);
+    const setup = '__mocks__/setupTests.tsx';
+    const first = await applySync(cwd, DEFAULT_ANSWERS, [setup]);
 
-    expect(first.written).toEqual(['scripts/checkBannedPatterns.ts']);
+    expect(first.written).toEqual([setup]);
 
-    await writeFile(
-      join(cwd, 'scripts/checkBannedPatterns.ts'),
-      'const PROJECT_BANNED = [];\n',
-      'utf8',
-    );
+    await writeFile(join(cwd, setup), '// the project own setup\n', 'utf8');
 
-    const second = await applySync(cwd, DEFAULT_ANSWERS, ['scripts/checkBannedPatterns.ts']);
+    const second = await applySync(cwd, DEFAULT_ANSWERS, [setup]);
 
     expect(second.written).toEqual([]);
-    expect(await readFile(join(cwd, 'scripts/checkBannedPatterns.ts'), 'utf8'))
-      .toContain('PROJECT_BANNED');
+    expect(await readFile(join(cwd, setup), 'utf8')).toBe('// the project own setup\n');
   });
 
   it('removes the obsolete files it is given and reports each one', async () => {

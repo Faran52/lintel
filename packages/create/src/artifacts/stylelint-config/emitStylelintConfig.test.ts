@@ -54,3 +54,20 @@ describe('emitStylelintConfig', () => {
     }
   });
 });
+
+/**
+ * `@custom-variant` is how Tailwind 4 defines a variant and its body is a bare `&` rule by design, with the at-rule
+ * as the scoping root. `stylelint-config-tailwindcss` teaches `at-rule-no-unknown` about it and stops there, so the
+ * at-rule parses and its contents still report. Found by a real project whose CSS was correct.
+ */
+describe('the tailwind nesting carve-out', () => {
+  it('stands the scoping-root rule down for a tailwind project', () => {
+    expect(emitStylelintConfig({ ...DEFAULT_ANSWERS, libraries: ['tailwind'] }))
+      .toContain("'nesting-selector-no-missing-scoping-root': null,");
+  });
+
+  it('leaves it on for a project with no tailwind', () => {
+    expect(emitStylelintConfig(DEFAULT_ANSWERS))
+      .not.toContain('nesting-selector-no-missing-scoping-root');
+  });
+});

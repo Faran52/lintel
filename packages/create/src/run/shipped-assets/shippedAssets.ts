@@ -39,5 +39,5 @@ export const contentOf = async (
 
   const joined = parts.join('\n');
 
-  return content.transform === undefined ? joined : content.transform(joined);
+  return content.transform === undefined ? joined : content.transform(joined, current);
 };

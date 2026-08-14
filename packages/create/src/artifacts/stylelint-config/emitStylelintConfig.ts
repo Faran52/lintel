@@ -29,6 +29,20 @@ const CSS_MODULE_OVERRIDE: StyleOverride = {
   ],
 };
 
+/**
+ * `@custom-variant` is how Tailwind 4 defines a variant, and its body is a bare `&` rule by design: the at-rule is
+ * the scoping root, and `@slot` marks where the wrapped declarations land. stylelint reads that `&` as dangling.
+ *
+ * `stylelint-config-tailwindcss` already teaches `at-rule-no-unknown` about `custom-variant` and stops there, so the
+ * at-rule parses and its contents still report. Scoped off for a Tailwind project only, which is the one place the
+ * shape is idiomatic rather than a mistake.
+ */
+const TAILWIND_RULES = [
+  'rules: {',
+  "  'nesting-selector-no-missing-scoping-root': null,",
+  '},',
+];
+
 const overridesFor = (overrides: StyleOverride[]): string => {
   const blocks = overrides.map(({ files, body }) => {
     const lines = body.map((line) => {
@@ -60,5 +74,9 @@ export const emitStylelintConfig = (answers: Answers): string => {
     CSS_MODULE_OVERRIDE,
   ]);
 
-  return `const config = {\n  extends: [\n${entries}\n  ],${overrides}\n};\n\nexport default config;\n`;
+  const rules = hasLibrary(answers, 'tailwind')
+    ? `\n  ${TAILWIND_RULES.join('\n  ')}`
+    : '';
+
+  return `const config = {\n  extends: [\n${entries}\n  ],${rules}${overrides}\n};\n\nexport default config;\n`;
 };

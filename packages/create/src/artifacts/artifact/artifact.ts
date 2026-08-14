@@ -10,9 +10,15 @@ export interface EmittedText {
 // `type-standards.md` gains a relaxed-floor tail when that answer was chosen.
 export interface CopiedAssets {
   sources: string[];
-  // Depends on answers, not the file: type-standards.md's shared glob names .vue and .svelte for every target,
-  // including pure React and TypeScript.
-  transform?: (source: string) => string;
+  /**
+   * Depends on answers, not the file: type-standards.md's shared glob names .vue and .svelte for every target,
+   * including pure React and TypeScript.
+   *
+   * `current` is whatever the project has, or `null` on a first write, for the one copied file that is half the
+   * project's: the checker holds the standard's pattern list and the project's own exemptions in one file, so it is
+   * neither emitted nor preserved but carried over.
+   */
+  transform?: (source: string, current: string | null) => string;
 }
 
 /**
