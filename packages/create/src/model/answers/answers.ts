@@ -264,10 +264,13 @@ export const TYPE_SAFETY_CHOICES: TypeSafety[] = ['strict', 'relaxed'];
 // floor (lowercase, no leading `.`/`_`, URL-safe) is also the strictest of the two, so meeting it meets both.
 export const PROJECT_NAME_RULE
   = "a valid npm package name: lowercase letters, digits, '.', '-' and '_' only, starting with a letter or digit, "
-    + 'at most 214 characters';
+    + 'at most 214 characters, and not a reserved npm name';
 
 const PROJECT_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]*$/;
+const RESERVED_PROJECT_NAMES = new Set(['favicon.ico', 'node_modules']);
 
 export const isValidProjectName = (name: string): boolean => {
-  return name.length <= 214 && PROJECT_NAME_PATTERN.test(name);
+  return name.length <= 214
+    && PROJECT_NAME_PATTERN.test(name)
+    && !RESERVED_PROJECT_NAMES.has(name);
 };

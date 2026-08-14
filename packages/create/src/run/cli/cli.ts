@@ -10,7 +10,12 @@ import {
 } from 'node:process';
 import { parseArgs } from 'node:util';
 
-import { type Answers, DEFAULT_ANSWERS } from '../../model/answers/answers';
+import {
+  type Answers,
+  DEFAULT_ANSWERS,
+  isValidProjectName,
+  PROJECT_NAME_RULE,
+} from '../../model/answers/answers';
 import { CONFIG_PATH, readLintelConfig } from '../../model/config/lintelConfig';
 import { type Stage, STAGES } from '../../model/stages/stages';
 import { runPipeline } from '../pipeline/pipeline';
@@ -29,8 +34,10 @@ export interface CliOptions {
   name: string;
   cwd: string;
   skip: Stage[];
-  // `--skip` values naming no stage; `main` reports and stops, so `parseCliArgs` stays throw-free and testable.
+  // `--skip` values naming no stage, and positionals past the name. Carried rather than thrown on, so `main` reports
+  // all of them the same way; what `parseArgs` itself rejects still throws, and `main` catches that.
   unknownSkips: string[];
+  unexpectedArguments: string[];
   yes: boolean;
   fresh: boolean;
   force: boolean;
@@ -54,7 +61,7 @@ const USAGE = `@linteljs/create [name] [options]
   --force           sync: overwrite without asking
   --help, -h
 
-A run with no terminal answers nothing, so pass --yes to mean the defaults on purpose.
+A non-interactive create needs a project name and --yes to accept the defaults on purpose.
 `;
 
 const isStage = (value: string): value is Stage => {
@@ -78,7 +85,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     },
   });
 
-  const [first = ''] = positionals;
+  const [first = '', ...unexpectedArguments] = positionals;
   const command = first === 'sync' ? 'sync' : 'create';
   const skip: Stage[] = values.skip.filter(isStage);
   const unknownSkips = values.skip.filter((value) => {
@@ -101,6 +108,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     cwd: processCwd(),
     skip,
     unknownSkips,
+    unexpectedArguments,
     yes: values.yes,
     fresh: values.fresh,
     force: values.force,
@@ -189,22 +197,69 @@ const runSync = async (options: CliOptions, answers: Answers): Promise<void> => 
   }
 };
 
+const projectNameError = (options: CliOptions): string | undefined => {
+  if (options.command === 'sync') {
+    return undefined;
+  }
+
+  if (options.name !== '' && !isValidProjectName(options.name)) {
+    return `Project name must be ${PROJECT_NAME_RULE}.`;
+  }
+
+  if (options.yes && options.name === '' && !options.skip.includes('scaffold')) {
+    return 'A project name is required with --yes.';
+  }
+
+  return undefined;
+};
+
+// Every reason to refuse the argv itself, in the order a user meets them, so `main` carries one bail-out rather than
+// one per reason.
+const argumentError = (options: CliOptions): string | undefined => {
+  if (options.unexpectedArguments.length > 0) {
+    const plural = options.unexpectedArguments.length === 1 ? '' : 's';
+
+    return `Unexpected argument${plural}: ${options.unexpectedArguments.join(', ')}`;
+  }
+
+  // Stopping is the only honest answer for an unknown skip: the run asked for is not the run that would happen.
+  if (options.unknownSkips.length > 0) {
+    return `Not a stage: ${options.unknownSkips.join(', ')}. Pass one of: ${STAGES.join(', ')}.`;
+  }
+
+  return projectNameError(options);
+};
+
 // Returns the exit code rather than calling `process.exit`, which would drop queued stderr writes;
 // `bin/create-linteljs.js` assigns it to `process.exitCode`.
 export const main = async (argv: string[], prompter?: Prompter): Promise<number> => {
-  const options = parseCliArgs(argv);
+  let options: CliOptions;
+
+  try {
+    options = parseCliArgs(argv);
+  }
+  catch (error) {
+    // `parseArgs` throws a `TypeError` and nothing else, so no test can stage the other arm, hence the ignore.
+    /* v8 ignore next 3 */
+    if (!(error instanceof Error)) {
+      throw error;
+    }
+
+    // The message alone: the class name of what `parseArgs` threw is not something a user asked about.
+    console.error(error.message);
+
+    return 1;
+  }
 
   if (options.help) {
     say(USAGE);
     return 0;
   }
 
-  // Stopping is the only honest answer for an unknown skip: the run asked for is not the run that would happen.
-  if (options.unknownSkips.length > 0) {
-    console.error(
-      `Not a stage: ${options.unknownSkips.join(', ')}. `
-      + `Pass one of: ${STAGES.join(', ')}.`,
-    );
+  const refusal = argumentError(options);
+
+  if (refusal !== undefined) {
+    console.error(refusal);
 
     return 1;
   }

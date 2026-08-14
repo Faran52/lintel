@@ -33,6 +33,8 @@ describe('isValidProjectName', () => {
     ['a leading dash', '-leading'],
     ['a space', 'my app'],
     ['a path separator', 'nested/app'],
+    ['the npm install directory', 'node_modules'],
+    ['the npm reserved asset', 'favicon.ico'],
     ['one character too many', 'a'.repeat(215)],
   ])('rejects %s', (_case, name) => {
     expect(isValidProjectName(name)).toBe(false);

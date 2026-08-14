@@ -154,6 +154,11 @@ describe('parseCliArgs', () => {
   it('reports nothing unknown for a valid skip list', () => {
     expect(parseCliArgs(['demo-app', '--skip', 'standard']).unknownSkips).toEqual([]);
   });
+
+  it('keeps extra positional arguments for main to reject', () => {
+    expect(parseCliArgs(['demo-app', 'extra']).unexpectedArguments).toEqual(['extra']);
+    expect(parseCliArgs(['sync', 'extra']).unexpectedArguments).toEqual(['extra']);
+  });
 });
 
 // `--help` and the written-file list are the product of the CLI, so they go to stdout, not stderr
@@ -173,6 +178,24 @@ describe('main: what it prints and what it returns', () => {
     expect(code).toBe(1);
     expect(errors).toEqual([expect.stringContaining('Not a stage: lnt')]);
     expect(errors[0]).toContain('scaffold, lint, package, standard, install, fix');
+    expect(await exists(join(project, 'eslint.config.js'))).toBe(false);
+  });
+
+  it.each([
+    ['an invalid project name', ['My-App', '--skip-scaffold', '--no-install', '--yes'], 'Project name must be'],
+    ['a missing project name with --yes', ['--yes'], 'A project name is required with --yes'],
+    ['an extra create argument', ['demo-app', 'extra', '--yes'], 'Unexpected argument: extra'],
+    ['extra create arguments', ['demo-app', 'extra', 'more', '--yes'], 'Unexpected arguments: extra, more'],
+    ['an extra sync argument', ['sync', 'extra'], 'Unexpected argument: extra'],
+    ['an unknown option', ['--wat'], "Unknown option '--wat'"],
+  ])('fails on %s before writing anything', async (_case, argv, message) => {
+    const { code, errors } = await runMain(argv);
+
+    expect(code).toBe(1);
+    // The line opens with what a user has to act on. `parseArgs` answers a `TypeError` named
+    // `TypeError [ERR_PARSE_ARGS_UNKNOWN_OPTION]`, and printing the thrown value puts all of that first.
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.startsWith(message)).toBe(true);
     expect(await exists(join(project, 'eslint.config.js'))).toBe(false);
   });
 
