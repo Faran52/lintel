@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.3
+
+### Fixed
+
+- **`sync` reconciles dependencies.** `package.json` is a merged artifact now, for the reason `.gitignore` and
+  `pnpm-workspace.yaml` were converted in 1.3.2: it was written by a pipeline stage, `sync` writes artifacts, so a
+  dependency a release added to a layer reached every new project and no existing one. Two of three reference
+  migrations had to add plugins by hand that their own recorded answers already implied. The merge is
+  `patchPackageJson`, unchanged, so nothing a project declared is dropped and both routes write the same file.
+- **The end-to-end suite retries `ERR_PNPM_NO_MATCHING_VERSION`, and nothing else.** A scaffolder pins the version it
+  just saw, so a run starting around an upstream release asks for something not yet propagated: `create astro` wrote
+  `astro: ^7.2.2` and the install failed 33 seconds before that version existed, failing the 1.4.1 release for a
+  reason that had nothing to do with the code. Every other install failure still fails the suite, because a broken
+  generated project is what it is there to find.
+
 ## 1.4.2
 
 ### Fixed

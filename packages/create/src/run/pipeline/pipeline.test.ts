@@ -146,9 +146,12 @@ describe('runPipeline with --skip-scaffold', () => {
     });
     expect(await readFile(join(cwd, CONFIG_PATH), 'utf8')).toBe(emitLintelConfig(DEFAULT_ANSWERS));
 
-    const packageIndex = written.indexOf('package.json');
-
-    expect(written.slice(packageIndex, packageIndex + 2)).toEqual(['package.json', CONFIG_PATH]);
+    /**
+     * Both are stage-`package` writes and the config now comes first, because `package.json` became a merged
+     * artifact so that `sync` reconciles dependencies too. What matters is that they land in the same stage, which
+     * is what makes the recorded answers and the dependencies they imply agree.
+     */
+    expect(written.indexOf(CONFIG_PATH)).toBeLessThan(written.indexOf('package.json'));
 
     const packageJson = parsePackageJson(await readFile(join(cwd, 'package.json'), 'utf8'));
 
@@ -972,9 +975,8 @@ describe('root config', () => {
     });
     expect(await readFile(join(cwd, CONFIG_PATH), 'utf8')).toBe(emitLintelConfig(answers));
 
-    const packageIndex = written.indexOf('package.json');
-
-    expect(written.slice(packageIndex, packageIndex + 2)).toEqual(['package.json', CONFIG_PATH]);
+    // Same stage, config first: see the note on the ordering assertion above.
+    expect(written.indexOf(CONFIG_PATH)).toBeLessThan(written.indexOf('package.json'));
   });
 
   it('is not part of the sync artifact plan', async () => {

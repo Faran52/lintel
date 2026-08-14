@@ -436,6 +436,19 @@ Both were invisible until `answersIn` in `cli.ts` named them, which is the same 
 had: the parse accepts the field, everything downstream keeps working on the default, and only a
 generated project shows it. That whitelist is deliberate and each addition is pinned by a test.
 
+**`package.json` is a merged artifact, like `.gitignore` and `pnpm-workspace.yaml` before it.** It was reconciled
+by the package stage, and `sync` writes artifacts rather than stages, so a dependency a release added to a layer
+reached every new project and no existing one. Two of three reference migrations had to add plugins by hand that
+their own recorded answers already implied: one needed `@next/eslint-plugin-next`, the other needed
+`eslint-plugin-jsx-a11y`, both `@html-eslint` packages and `@types/chrome`. The merge is `patchPackageJson`, which
+already did the right thing for a `create` run and never ran for a `sync` one, so both routes now agree.
+
+**The end-to-end suite retries one install error and no other.** A scaffolder pins the version it just saw, so a run
+starting in the minutes around an upstream release asks the registry for something not yet propagated: `create astro`
+wrote `astro: ^7.2.2` and the install failed 33 seconds before that version existed, taking a release with it.
+`ERR_PNPM_NO_MATCHING_VERSION` is matched exactly, because every other install failure means the generated project is
+genuinely broken, which is what the suite exists to catch. Retrying anything wider would hide that.
+
 **`no-console` stands down under `scripts/`.** A build or packaging script reports to a terminal,
 which is the one place stdout is the output rather than a leftover debug line. Firing there left
 every project turning the rule off for a glob of its own, and each reached for `**/*.js`, which also

@@ -764,6 +764,30 @@ describe('main: sync', () => {
     expect(config.browsers).toEqual(['chrome', 'firefox']);
   });
 
+  /**
+   * The gap this closes, found by two of three reference migrations: `package.json` was reconciled by a pipeline
+   * stage and `sync` writes artifacts, so a dependency a release added to a layer reached every new project and no
+   * existing one. Both repos had to add plugins by hand that their own recorded answers already implied.
+   */
+  it('adds the dependencies the answers imply and keeps what the project declared', async () => {
+    await writeConfig({ ...DEFAULT_ANSWERS, target: 'solid' });
+    await writeFile(
+      join(project, 'package.json'),
+      `${JSON.stringify({ name: 'demo', devDependencies: { 'some-tool': '^1.0.0' } }, null, 2)}\n`,
+      'utf8',
+    );
+
+    await runMain(['sync', '--force'], scripted([]));
+
+    const packageJson = parsePackageJson(await readFile(join(project, 'package.json'), 'utf8'));
+
+    expect(packageJson.devDependencies).toHaveProperty('eslint-plugin-solid');
+    expect(packageJson.devDependencies).toHaveProperty('@linteljs/eslint-config');
+    // Nothing the project declared is dropped, which is what makes this a merge rather than an overwrite.
+    expect(packageJson.devDependencies?.['some-tool']).toBe('^1.0.0');
+    expect(packageJson.name).toBe('demo');
+  });
+
   it('plans an extension from the browser and framework the config recorded', async () => {
     await writeConfig({
       ...DEFAULT_ANSWERS,

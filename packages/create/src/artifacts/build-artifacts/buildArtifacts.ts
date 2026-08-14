@@ -16,6 +16,7 @@ import { checkerArtifact, setupTestsPath } from '../banned-patterns/checkerArtif
 import { emitCiWorkflow } from '../ci-workflow/emitCiWorkflow';
 import { emitEslintConfig } from '../eslint-config/emitEslintConfig';
 import { mergeGitignore } from '../gitignore/mergeGitignore';
+import { mergePackageJson } from '../package-json/mergePackageJson';
 import { mergePnpmWorkspace } from '../pnpm-workspace/mergePnpmWorkspace';
 import { mergeStyleEntry } from '../style-entry/mergeStyleEntry';
 import { emitStylelintConfig } from '../stylelint-config/emitStylelintConfig';
@@ -44,7 +45,7 @@ const setupSources = (answers: Answers, target: TargetRecord): string[] => {
  *
  * `existingSetup` preserves a project's setup spelling.
  */
-export const buildArtifacts = (answers: Answers, existingSetup?: string): Artifact[] => {
+export const buildArtifacts = (answers: Answers, existingSetup?: string, name = ''): Artifact[] => {
   const target = targetFor(answers);
   const setup = setupTestsPath(answers, existingSetup);
   const viteConfig = emitViteConfig(answers);
@@ -80,6 +81,16 @@ export const buildArtifacts = (answers: Answers, existingSetup?: string): Artifa
    * `coverage/` and `*.tsbuildinfo` are this tool's output, so no generator ignores them. Merged rather than written,
    * to keep the scaffolder's own list (`.next/` and friends).
    */
+  /**
+   * Merged, not written by the package stage alone, for the reason `.gitignore` and `pnpm-workspace.yaml` were
+   * converted in 1.3.2: `sync` writes artifacts, so anything a stage writes never reaches a project that already
+   * exists. Two of three reference migrations had to add dependencies by hand that their answers already implied,
+   * because a release that adds a plugin to a layer reached every new project and no old one.
+   */
+  artifacts.push(merged('package', 'package.json', (current) => {
+    return mergePackageJson(current, answers, name);
+  }));
+
   artifacts.push(merged('package', '.gitignore', mergeGitignore));
 
   // Merged for the same reason, and only where it means something: discarding it breaks an install that already wrote

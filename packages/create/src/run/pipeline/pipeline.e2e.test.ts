@@ -100,6 +100,27 @@ const outcome = (result: RunResult, label: string): string => {
   return result.status === 0 ? `${label}: ok` : `${label}: exit ${String(result.status)}\n${result.output}`;
 };
 
+/**
+ * The one failure worth retrying, and only this one. A scaffolder pins the version it just saw, so a run that starts
+ * in the minutes around an upstream release asks the registry for something it has not finished publishing:
+ * `create astro` wrote `astro: ^7.2.2` and the install died 33 seconds before that version existed, failing a release
+ * that had nothing wrong with it.
+ *
+ * Matched on the error code rather than on any install failure, because every other one means the generated project
+ * is genuinely broken, which is the whole point of this suite.
+ */
+const UNPUBLISHED_YET = 'ERR_PNPM_NO_MATCHING_VERSION';
+
+const runInstallingCli = (project: string): RunResult => {
+  const attempt = (): RunResult => {
+    return run('node', [join(cliRoot, 'package/bin/create-linteljs.js'), '--skip-scaffold'], project);
+  };
+
+  const first = attempt();
+
+  return first.status === 0 || !first.output.includes(UNPUBLISHED_YET) ? first : attempt();
+};
+
 const workspace = mkdtempSync(join(tmpdir(), 'lintel-e2e-'));
 
 // The CLI runs from the packed tarball, so `bin/`, `dist/` and `assets/` are all exercised.
@@ -257,11 +278,7 @@ describe('end-to-end generation', () => {
 
     // Stages 2-6, including install and the eslint --fix pass; `pnpm-workspace.yaml` is written once and never
     // overwritten, so the overrides appended above survive.
-    const complete = run(
-      'node',
-      [join(cliRoot, 'package/bin/create-linteljs.js'), '--skip-scaffold'],
-      project,
-    );
+    const complete = runInstallingCli(project);
 
     expect(outcome(complete, '@linteljs/create install+fix')).toBe('@linteljs/create install+fix: ok');
     expect(complete.output).not.toContain('next: ');

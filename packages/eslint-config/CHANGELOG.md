@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.3
+
+No change to the layers. The three versions move together, so this carries the `sync` dependency reconciliation in
+`@linteljs/create`.
+
 ## 1.4.2
 
 No change to the layers. The three versions move together, so this carries the hosted-extension JSX

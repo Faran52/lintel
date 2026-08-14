@@ -173,7 +173,13 @@ describe('buildArtifacts', () => {
 
     expect(targets).toContain('.gitignore');
     expect(targets).toContain('pnpm-workspace.yaml');
-    expect(targets).not.toContain('package.json');
+    /**
+     * `package.json` joins them for the same reason they were converted in 1.3.2. It was reconciled by the package
+     * stage, and `sync` writes artifacts rather than stages, so a dependency a release added reached every new
+     * project and no existing one. Two of three reference migrations had to add plugins by hand that their own
+     * answers already implied.
+     */
+    expect(targets).toContain('package.json');
     expect(targets).not.toContain('README.md');
     expect(artifactFor({}, 'CLAUDE.md')?.preserve).toBe(true);
   });

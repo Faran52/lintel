@@ -6,7 +6,6 @@ import { env } from 'node:process';
 import { type Artifact, buildArtifacts } from '../../artifacts';
 import { SETUP_TESTS_CANDIDATES } from '../../artifacts/banned-patterns/checkerArtifact';
 import { emitManifest } from '../../artifacts/manifest/emitManifest';
-import { emitPackageJson, parsePackageJson } from '../../artifacts/package-json/emitPackageJson';
 import { emitReadme } from '../../artifacts/readme/emitReadme';
 import { browsersOf, hasTests } from '../../model/answers/answers';
 import { CONFIG_PATH, emitLintelConfig } from '../../model/config/lintelConfig';
@@ -22,11 +21,7 @@ import { applyArtifact, writeProjectFile } from '../project-files/projectFiles';
 import { repairScaffoldedOutput } from '../repair/repair';
 import { rewriteScaffoldedSource } from '../rewrite/rewrite';
 import { ASSETS_ROOT } from '../shipped-assets/shippedAssets';
-import {
-  exists,
-  firstPresent,
-  readIfPresent,
-} from '../utils/fsUtils';
+import { exists, firstPresent } from '../utils/fsUtils';
 
 import type { Answers, PackageManager } from '../../model/answers/answers';
 
@@ -135,10 +130,7 @@ const stagePackage = async (
   artifacts: Artifact[],
   stage: Stage,
 ): Promise<void> => {
-  const existing = await readIfPresent(join(options.cwd, 'package.json'));
-  const parsed = existing === null ? { name: options.name } : parsePackageJson(existing);
-
-  await write(options, 'package.json', emitPackageJson(parsed, options.answers));
+  // `package.json` is a merged artifact now, so `writeArtifacts` below writes it and `sync` runs the same merge.
   await write(options, CONFIG_PATH, emitLintelConfig(options.answers));
   await writeArtifacts(options, artifacts, stage);
 
@@ -271,7 +263,7 @@ const STAGE_RUNNERS: Record<Stage, StageRunner> = {
 
 export const runPipeline = async (options: PipelineOptions): Promise<void> => {
   const existingSetup = await firstPresent(options.cwd, SETUP_TESTS_CANDIDATES);
-  const artifacts = buildArtifacts(options.answers, existingSetup);
+  const artifacts = buildArtifacts(options.answers, existingSetup, options.name);
 
   for (const stage of STAGES) {
     // Skipped with lint: `--skip lint` means somebody else's rules, and fixing against those is an unasked-for edit.
