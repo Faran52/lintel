@@ -1,23 +1,78 @@
 import { constants } from 'node:fs';
 import {
   chmod,
+  lstat,
   mkdir,
   open,
 } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import {
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from 'node:path';
 
 import { type Artifact } from '../../artifacts';
 import { contentOf } from '../shipped-assets/shippedAssets';
-import { entryExists, readIfPresent } from '../utils/fsUtils';
+import {
+  entryExists,
+  isAbsence,
+  readIfPresent,
+} from '../utils/fsUtils';
+
+export const safeProjectPath = async (cwd: string, target: string): Promise<string> => {
+  const root = resolve(cwd);
+  const path = resolve(root, target);
+  const relativePath = relative(root, path);
+
+  if (
+    isAbsolute(target)
+    || relativePath === ''
+    || relativePath === '..'
+    || relativePath.startsWith(`..${sep}`)
+  ) {
+    throw new Error(`Refusing to use ${target}: target must be a relative path inside the project`);
+  }
+
+  let parent = root;
+
+  for (const segment of dirname(relativePath).split(sep)) {
+    if (segment === '.') {
+      continue;
+    }
+
+    parent = join(parent, segment);
+
+    try {
+      if ((await lstat(parent)).isSymbolicLink()) {
+        throw new Error(`Refusing to use ${target}: a parent directory is a symbolic link`);
+      }
+    }
+    catch (error) {
+      if (isAbsence(error)) {
+        break;
+      }
+
+      throw error;
+    }
+  }
+
+  return path;
+};
 
 export const writeProjectFile = async (
   cwd: string,
   target: string,
   text: string,
 ): Promise<void> => {
-  const path = join(cwd, target);
+  const path = await safeProjectPath(cwd, target);
 
   await mkdir(dirname(path), { recursive: true });
+  // Walked again, because the first walk stops at the first parent that did not exist yet and `mkdir` has just
+  // created those. Its answer is the same path; it is called for the refusal, not the value.
+  await safeProjectPath(cwd, target);
 
   try {
     // Generated files may replace regular files, but never a symbolic link and whatever it points at.
@@ -55,7 +110,7 @@ export const applyArtifact = async (
   artifact: Artifact,
   fresh = false,
 ): Promise<boolean> => {
-  const path = join(cwd, artifact.target);
+  const path = await safeProjectPath(cwd, artifact.target);
 
   if (!fresh && artifact.preserve === true && await entryExists(path)) {
     return false;

@@ -194,6 +194,18 @@ describe('applySync', () => {
     await expect(readFile(external, 'utf8')).resolves.toBe('// external config\n');
   });
 
+  it('refuses to remove an obsolete file through a symbolic-link parent', async () => {
+    const external = join(cwd, 'external-claude');
+
+    await mkdir(external);
+    await writeFile(join(external, 'settings.json'), '{"external":true}\n', 'utf8');
+    await symlink(external, join(cwd, '.claude'));
+
+    await expect(applySync(cwd, CODEX_ONLY, ['.claude/settings.json']))
+      .rejects.toThrow('Refusing to use .claude/settings.json: a parent directory is a symbolic link');
+    await expect(readFile(join(external, 'settings.json'), 'utf8')).resolves.toBe('{"external":true}\n');
+  });
+
   it('makes an executable artifact executable on disk', async () => {
     await applySync(cwd, DEFAULT_ANSWERS, [CLAUDE_HOOK]);
 

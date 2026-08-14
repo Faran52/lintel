@@ -63,6 +63,29 @@ describe('writeProjectFile', () => {
     await expect(readIfPresent(external)).resolves.toBe(original);
   });
 
+  it('refuses a symbolic-link parent without touching its destination', async () => {
+    const external = join(cwd, 'external');
+
+    await mkdir(external);
+    await symlink(external, join(cwd, 'nested'));
+
+    await expect(writeProjectFile(cwd, 'nested/generated.txt', 'generated\n'))
+      .rejects.toThrow('Refusing to use nested/generated.txt: a parent directory is a symbolic link');
+    await expect(readIfPresent(join(external, 'generated.txt'))).resolves.toBeNull();
+  });
+
+  it.each([
+    ['an absolute path', (root: string) => {
+      return join(root, 'outside.txt');
+    }],
+    ['a parent traversal', () => {
+      return '../outside.txt';
+    }],
+  ])('refuses %s', async (_case, targetFor) => {
+    await expect(writeProjectFile(cwd, targetFor(cwd), 'generated\n'))
+      .rejects.toThrow('target must be a relative path inside the project');
+  });
+
   it('surfaces a non-symbolic-link write failure unchanged', async () => {
     await mkdir(join(cwd, 'generated.txt'));
 

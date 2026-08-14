@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 
 import { buildArtifacts, GENERATED_AGENT_TARGETS } from '../../artifacts';
 import { git } from '../git/git';
-import { applyArtifact } from '../project-files/projectFiles';
+import { applyArtifact, safeProjectPath } from '../project-files/projectFiles';
 import { readProjectShape } from '../project-shape/readProjectShape';
 import { contentOf } from '../shipped-assets/shippedAssets';
 import { entryExists, readIfPresent } from '../utils/fsUtils';
@@ -161,7 +161,7 @@ export const applySync = async (
     }
 
     // Every inventory member is a file, and on a symlink this drops the link rather than its target.
-    await rm(join(cwd, target), { force: true });
+    await rm(await safeProjectPath(cwd, target), { force: true });
     removed.push(target);
   }
 

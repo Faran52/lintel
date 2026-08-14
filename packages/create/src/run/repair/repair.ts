@@ -6,9 +6,9 @@ import {
 import { basename, join } from 'node:path';
 
 import { targetFor } from '../../model/targets';
-import { writeProjectFile } from '../project-files/projectFiles';
+import { safeProjectPath, writeProjectFile } from '../project-files/projectFiles';
 import { SOURCE_ROOT, sourceFiles } from '../rewrite/rewrite';
-import { exists } from '../utils/fsUtils';
+import { entryExists, isAbsence } from '../utils/fsUtils';
 
 import type { Answers } from '../../model/answers/answers';
 import type { StarterRename } from '../../model/targets';
@@ -25,14 +25,18 @@ const applyStarterFixes = async (
     transform,
     moveTo,
   } of targetFor(answers).starterFixes ?? []) {
-    const full = join(cwd, path);
+    const full = await safeProjectPath(cwd, path);
     let before = '';
 
     try {
       before = await readFile(full, 'utf8');
     }
-    catch {
-      continue;
+    catch (error) {
+      if (isAbsence(error)) {
+        continue;
+      }
+
+      throw error;
     }
 
     const after = transform === undefined ? before : transform(before);
@@ -85,7 +89,8 @@ const renameStarterFiles = async (
   const moved: StarterRename[] = [];
 
   for (const entry of targetFor(answers).starterRenames ?? []) {
-    const present = await exists(join(cwd, entry.from));
+    const from = await safeProjectPath(cwd, entry.from);
+    const present = await entryExists(from);
 
     if (!present) {
       // Warned, not thrown: a generator that moved its own file is not a reason to fail a generate.
@@ -94,7 +99,7 @@ const renameStarterFiles = async (
     }
 
     // Always a write, since the destination is what changed rather than the text.
-    await rename(join(cwd, entry.from), join(cwd, entry.to));
+    await rename(from, await safeProjectPath(cwd, entry.to));
     moved.push(entry);
     onWrite?.(entry.to);
   }
@@ -127,13 +132,14 @@ const removeStaleScaffoldFiles = async (
   onNotice?: (message: string) => void,
 ): Promise<void> => {
   for (const path of targetFor(answers).staleScaffoldFiles ?? []) {
-    const present = await exists(join(cwd, path));
+    const full = await safeProjectPath(cwd, path);
+    const present = await entryExists(full);
 
     if (!present) {
       continue;
     }
 
-    await rm(join(cwd, path));
+    await rm(full);
     // Reported, not silent: a delete the user did not ask for has to appear in the log.
     onNotice?.(`removed ${path}, which nothing references now`);
   }

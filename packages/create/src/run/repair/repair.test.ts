@@ -305,6 +305,12 @@ describe('starter fixes', () => {
       .resolves.toBeUndefined();
   });
 
+  it('surfaces a starter read failure instead of treating it as a moved file', async () => {
+    await mkdir(join(cwd, 'index.html'));
+
+    await expect(repairScaffoldedOutput(cwd, answersFor('vue'))).rejects.toThrow(/EISDIR/);
+  });
+
   // `no-empty-source` and `no-duplicate-selectors` have no fixer, so these two are the whole
   // difference between a `lint:css` gate that passes on day one and one that does not.
   it("fills angular's empty component stylesheet, which no fixer reaches", async () => {
