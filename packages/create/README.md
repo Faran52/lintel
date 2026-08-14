@@ -11,7 +11,9 @@ pnpm create @linteljs my-app
 ```
 
 Use the package manager you have. The argument is the project name. Leave it out to answer that question in
-the CLI.
+the CLI. Names use lowercase letters, digits, dots, dashes, and underscores, and must start with a letter or
+digit, avoid npm's reserved names, and contain no more than 214 characters. Extra positional arguments are
+rejected.
 
 | Runner | Short form | Long form |
 | --- | --- | --- |
@@ -95,7 +97,7 @@ plugins.
   --help, -h
 ```
 
-The CLI refuses a non-interactive run unless you pass `--yes`. Ctrl+C writes nothing.
+For a non-interactive create, pass both the project name and `--yes`. Ctrl+C writes nothing.
 
 ## Existing projects and updates
 

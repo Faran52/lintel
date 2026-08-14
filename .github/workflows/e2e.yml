@@ -1,8 +1,7 @@
 name: e2e
 
-# The generation suite: eight targets plus four answer shapes, each scaffolded, installed and put
-# through its own `pnpm check` for real. Twelve network installs, so it is too slow for a pull
-# request and runs on main and on demand instead.
+# The generation suite: nine targets plus eight answer shapes, each scaffolded, installed and put
+# through its own `pnpm check`. Seventeen network installs keep it off pull requests.
 
 on:
   push:

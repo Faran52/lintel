@@ -75,10 +75,10 @@ update them with a reviewable diff.
 
 ```bash
 pnpm install
-pnpm lint
-pnpm typecheck
-pnpm test:coverage
-pnpm build
+pnpm check
 ```
+
+`pnpm check` runs linting, CSS linting, type-checking, coverage, and all builds. The networked generation suite
+is separate: `pnpm --filter @linteljs/create test:e2e` scaffolds every target and runs each generated gate.
 
 MIT

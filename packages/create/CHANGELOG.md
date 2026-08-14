@@ -2,7 +2,28 @@
 
 ## 1.4.5
 
+### Changed
+
+- **A non-interactive create needs its project name.** `--yes` means the defaults on purpose, and the name is
+  the one answer no default can supply, so a run that passes `--yes` without one now stops rather than
+  scaffolding under an empty name. `--skip-scaffold` is exempt, since that run adopts a directory that already
+  has a name. A name that is not a valid npm package name is refused up front instead of at install, and npm's
+  two reserved names, `node_modules` and `favicon.ico`, are refused with the rest.
+- **A positional argument past the name is refused.** `create my-app extra` used to drop `extra` in silence,
+  which reads as accepted. Both it and an unknown option now stop the run with a message and exit 1; the
+  unknown option previously escaped as an unhandled `TypeError` and a Node stack trace.
+
 ### Fixed
+
+- **Every write is confined to the project.** `writeProjectFile`, `applyArtifact`, `applySync`'s removals and
+  the three starter repairs joined `cwd` to a target path and used the result. They resolve it now and refuse
+  anything that leaves the directory: an absolute path, a `..` at any position, the project root itself, and a
+  parent that is a symbolic link, walked segment by segment. The last one is the case a join cannot see, since
+  the resulting path is inside the project and the filesystem still follows it out. A symbolic link as the file
+  itself was already refused by the `O_NOFOLLOW` on the write.
+- **A starter repair no longer reads a failure as a moved file.** It caught every error from reading a file it
+  was about to fix and continued, so a permission error or a directory in that file's place looked exactly like
+  a generator having moved it, and the repair was skipped in silence. Only absence continues now.
 
 - **The type floor is merged, not frozen.** `scripts/checkBannedPatterns.ts` was `preserve: true`, and it
   holds two things: the pattern list, which is the standard, and `PROJECT_SKIPPED` and `PROJECT_BANNED`,
