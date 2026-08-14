@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.5
+
+No change to the layers. The three versions move together, so this carries the merged type floor and the
+discovered style entry in `@linteljs/create`.
+
 ## 1.4.4
 
 No change to the layers. The three versions move together, so this carries the caught-value carve-out

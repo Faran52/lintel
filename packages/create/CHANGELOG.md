@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.4.5
+
+### Fixed
+
+- **The type floor is merged, not frozen.** `scripts/checkBannedPatterns.ts` was `preserve: true`, and it
+  holds two things: the pattern list, which is the standard, and `PROJECT_SKIPPED` and `PROJECT_BANNED`,
+  which are the project's. Preserving froze both, so 1.4.4's caught-value grant reached every new project
+  and no existing one; a reference repo was still running the 1.4.1 patterns. It is carried over now: the
+  shipped file supplies the patterns and the project's own blocks are lifted back over them. `applyArtifact`
+  read the current file only for a merge, so a copied transform always saw `null`; it reads for either.
+
+  A block is free-form text with the reasons written beside its entries, so the carry-over reads it as text a
+  person wrote rather than as anything else. It ends on a `];` that is a line of its own, because a reason
+  quoting code (`arr[0];`) carries that pair as a substring and ended the block mid-comment, leaving the array
+  open. And it is carried by a function rather than a string replacement, because `$&` or `$'` in one reads as
+  the match and everything after it, which spliced the rest of the file into the block.
+
+- **A project's own stylesheet, rather than a second one beside it.** The Tailwind entry was a fixed path
+  per target, so a project keeping its entry elsewhere was handed a file nothing imported and the merge
+  meant to guarantee Tailwind was wired guaranteed nothing. The path is discovered now, and where a project
+  holds more than one candidate the target's own wins rather than whichever sorts earliest.
+
+- **Both routes read a project the same way.** `sync` looked up the setup file and the style entry;
+  `runPipeline` looked up the setup file alone, so the discovery above did not reach `--skip-scaffold`.
+  The cause was `buildArtifacts` taking its discoveries as loose positional arguments, which let a caller
+  skip one and the compiler agree. They are one `ProjectShape` from one `readProjectShape`, so the next
+  discovered file reaches both routes by construction.
+
+- **`mergeStyleEntry` recognises the `url()` import.** A real entry read `@import url("tailwindcss")
+  source(none)`, which the check missed, so a second unrestricted import went in above it and silently
+  undid the scan restriction the project had chosen.
+
+- **stylelint's `nesting-selector-no-missing-scoping-root` stands down for a Tailwind project.**
+  `@custom-variant` defines a variant as a bare `&` rule with the at-rule as its scoping root, which is
+  correct Tailwind 4. `stylelint-config-tailwindcss` teaches `at-rule-no-unknown` about it and stops there.
+
+- **Every recorded answer reaches the plan.** A second list in `run/cli` rebuilt `Answers` from a parsed
+  config field by field, and dropped in silence any answer it had not been taught about: `surfaces` shipped
+  that way, and a devtools-panel project came back replanned as a popup-and-background one. `LintelConfig
+  extends Answers`, so the conversion is gone and `parseLintelConfig` is the one list. It refuses an
+  unknown property by name, which is what the "No JavaScript output" guard always rested on.
+
 ## 1.4.4
 
 ### Added
