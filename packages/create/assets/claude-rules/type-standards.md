@@ -23,10 +23,17 @@ stops updating.
 ## Types
 
 - Never `any`, `unknown`, or `Record<string, unknown>`.
-  - Carve-out: `unknown` only as the input of a narrowing type guard
-    `(value: unknown): value is X` at a genuinely dynamic boundary with no upstream type: a
-    caught error, a parsed JSON payload, a server-driven field bag. It must narrow before use. If
-    an upstream type exists, type the input instead.
+  - Carve-out: `unknown` only at a genuinely dynamic boundary with no upstream type, and only in a
+    shape that shows the narrowing. Three of those are a guard's input
+    `(value: unknown): value is X`, the `JSON.parse` payload it narrows, and a dynamic `import()`
+    namespace. It must narrow before use. If an upstream type exists, type the input instead.
+  - The fourth is a **caught value**: `catch` binds `unknown` by language rule under
+    `useUnknownInCatchVariables`, so a single-argument helper turning a throw into something
+    readable, `(error: unknown): string`, has no other parameter type available. Granted for the
+    names a throw conventionally carries (`error`, `cause`, `reason`) and for one argument only,
+    because a caught value is the whole input or it is not this case. This is the one carve-out
+    keyed on a name rather than a shape, for the reason that TypeScript gives a caught value no
+    type of its own to key on.
 - **No casts to satisfy a type, anywhere, including tests.** No `as X`, no `as unknown as X`, no
   `as never`. A type you can only satisfy with a cast means the fixture or the design is wrong.
   Casting to a bare generic parameter (`as T`) inside the generic that declares it is exempt.

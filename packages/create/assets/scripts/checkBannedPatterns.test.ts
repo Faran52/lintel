@@ -61,12 +61,28 @@ describe('the carve-out the rule file grants', () => {
     ['the parsed payload it narrows', 'const parsed: unknown = JSON.parse(text);\n'],
     // `import()` with a computed path is typed `any`, so binding the namespace as `unknown` is the stronger read.
     ['a dynamic import namespace', 'const loaded: unknown = await import(`./rules/${name}.ts`);\n'],
+    // `catch` binds `unknown` by language rule, so a helper turning a throw into a message has no other parameter type.
+    ['a caught value', 'const messageOf = (error: unknown): string => {\n  return String(error);\n};\n'],
+    ['a caught value named cause', 'const codeOf = (cause: unknown): string => {\n  return String(cause);\n};\n'],
   ])('allows %s', async (_label, source) => {
     expect(await check(source)).toBe('');
   });
 
   it('still blocks an unknown binding with no boundary behind it', async () => {
     expect(await check('const loaded: unknown = other;\n')).toContain('[: unknown]');
+  });
+
+  /**
+   * The caught-value grant is the one keyed on a name rather than a shape, because TypeScript gives a caught value no
+   * type of its own. So it is held to the tightest reading that still covers the case: one argument, named for a
+   * throw. A second parameter means the function is doing something else and `unknown` is load-bearing there.
+   */
+  it.each([
+    ['a second parameter beside it', 'const f = (error: unknown, name: string): string => {\n  return name;\n};\n'],
+    ['a parameter named for anything else', 'const f = (value: unknown): string => {\n  return String(value);\n};\n'],
+    ['a caught value in a wider list', 'const f = (name: string, error: unknown): string => {\n  return name;\n};\n'],
+  ])('still blocks %s', async (_label, source) => {
+    expect(await check(source)).toContain('[: unknown]');
   });
 });
 

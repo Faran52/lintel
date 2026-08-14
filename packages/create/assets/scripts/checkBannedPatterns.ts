@@ -21,6 +21,16 @@ const NARROWING_GUARD = /:\s*unknown\b[^)]*\)\s*:\s*\w+\s+is\s/;
 const PARSED_JSON = /:\s*unknown\s*=\s*JSON\.parse\(/;
 const DYNAMIC_IMPORT = /:\s*unknown\s*=\s*await import\(/;
 
+/**
+ * A thrown value, which `catch` binds as `unknown` by language rule under `useUnknownInCatchVariables`. Matched on
+ * the whole parameter list rather than on `: unknown` anywhere in it, and on the three conventional names for a
+ * caught value, so it grants a single-argument helper turning a throw into something readable and nothing else.
+ *
+ * Structural evidence is not available here: TypeScript has no distinct type for a caught value, so the line carries
+ * no shape a regex could key on instead of the name.
+ */
+const CAUGHT_VALUE = /\(\s*(?:error|cause|reason)\s*:\s*unknown\s*\)/;
+
 // Anchor directives to comments so ordinary prose can name them.
 const directive = (name: string): RegExp => {
   return new RegExp(`(?://|/\\*)\\s*${name}`);
@@ -37,7 +47,7 @@ const ALWAYS_BANNED: BannedPattern[] = [
 const STRICT_ONLY: BannedPattern[] = [
   { name: 'as never', re: /\bas never\b/ },
   { name: 'as unknown', re: /\bas unknown\b/ },
-  { name: ': unknown', re: /:\s*unknown\b/, allowed: [NARROWING_GUARD, PARSED_JSON, DYNAMIC_IMPORT] },
+  { name: ': unknown', re: /:\s*unknown\b/, allowed: [NARROWING_GUARD, PARSED_JSON, DYNAMIC_IMPORT, CAUGHT_VALUE] },
   { name: '=> unknown', re: /=>\s*unknown\b/ },
   { name: 'unknown[]', re: /unknown\[]/ },
   { name: '<unknown>', re: /<unknown[,>]/ },
