@@ -52,6 +52,8 @@ interface ConfigOverrides {
   agents?: string | string[];
   plugins?: string | (string | number)[];
   unexpected?: boolean | object;
+  // An answer this version does not have, which is the shape a config written before it was dropped still carries.
+  typescript?: boolean;
 }
 
 interface SchemaNode {
@@ -454,6 +456,13 @@ describe('parseLintelConfig', () => {
   it.each([
     ['a non-object value', '[]', /lintel\.config\.json must be a JSON object/],
     ['an unexpected property', config({ unexpected: true }), /unexpected property: unexpected/],
+    /**
+     * The named case of the rule above, and the one DESIGN.md's "No JavaScript output" rests on: a project recorded
+     * under a version that still asked the question is refused rather than converted, because planning it as
+     * TypeScript would rewrite its config and scripts over source that is not, which git alone can undo. Pinned by
+     * name rather than left to the generic case, since it is a decision rather than an incidental.
+     */
+    ['a project recorded as javascript', config({ typescript: false }), /unexpected property: typescript/],
     ['a different schema URL', config({ $schema: 'https://example.com/schema.json' }), /\$schema must be/],
     [
       'a missing target',

@@ -765,6 +765,43 @@ describe('main: sync', () => {
   });
 
   /**
+   * The general form of the two tests above, which each pin one answer that was dropped between the parser and the
+   * plan. Answer by answer is a race the tests lose: `surfaces` was added, not threaded through, and reached the
+   * end-to-end suite. This holds the whole record at once, so an answer added to `Answers` and to the parser cannot
+   * arrive at a plan as its default without failing here.
+   *
+   * Run through `--skip-scaffold` rather than `sync`, because that is the route that writes the config back: it plans
+   * from the recorded answers and then rewrites `lintel.config.json` from the answers it planned with, so a field lost
+   * on the way in is a field missing on the way out. A `sync` would only read the file this test wrote and prove
+   * nothing.
+   */
+  it('plans from every answer a recorded config carries, not a subset of them', async () => {
+    const recorded: Answers = {
+      ...DEFAULT_ANSWERS,
+      target: 'webextension',
+      browser: 'firefox',
+      hostedFramework: 'solid',
+      surfaces: ['devtools-panel'],
+      testing: 'none',
+      packageManager: 'npm',
+      libraries: ['zod', 'tailwind'],
+      store: true,
+      typeSafety: 'relaxed',
+      agents: ['codex'],
+      plugins: ['context7'],
+      resolveConditions: ['import', 'default'],
+      aliases: { '@engine': './src/lib/engine/index.ts' },
+      browsers: ['firefox', 'chrome'],
+      ignores: ['src/lib/compat-data/generatedRegistry.ts'],
+    };
+
+    await writeConfig(recorded);
+    await runMain(['--skip-scaffold', '--no-install'], scripted([]));
+
+    expect(await configAt()).toMatchObject(recorded);
+  });
+
+  /**
    * The gap this closes, found by two of three reference migrations: `package.json` was reconciled by a pipeline
    * stage and `sync` writes artifacts, so a dependency a release added to a layer reached every new project and no
    * existing one. Both repos had to add plugins by hand that their own recorded answers already implied.

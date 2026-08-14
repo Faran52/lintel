@@ -86,11 +86,16 @@ These are decisions, not omissions. Re-adding any of them needs an argument.
   through the naming policy, the emitters, the prompts and the argv of four generators.
 
   A project that recorded `typescript: false` under an older version is refused, not converted:
-  `run/sync`'s `readAnswers` throws, so both routes that plan from a recorded block (`sync`, and
-  `create --skip-scaffold`) stop before writing. Converting silently would rewrite that project's
-  `eslint.config.js`, `tsconfig.json` and scripts as TypeScript over source that is not, which is
-  not recoverable without git. `StoredAnswers` keeps the field for that guard alone; `knownAnswers`
-  drops it, so no freshly written record carries it forward.
+  `parseLintelConfig` rejects a property it does not know, naming it, so both routes that plan from a
+  recorded block (`sync`, and `create --skip-scaffold`) stop before writing. Converting silently would
+  rewrite that project's `eslint.config.js`, `tsconfig.json` and scripts as TypeScript over source that
+  is not, which is not recoverable without git.
+
+  It is the parser that refuses, and deliberately not a second list in `run/cli`. That existed, as a
+  field-by-field whitelist rebuilding `Answers` from the parsed config, and it cost more than it
+  bought: an answer it did not name was dropped in silence rather than refused, which is how a
+  devtools-panel project came to be replanned as a popup-and-background one. One list that throws
+  beats two lists where the quieter one wins.
 - **No Prettier.** `@stylistic/eslint-plugin` owns formatting as lint rules. One tool, one config,
   no argument about who owns whitespace.
 - **No Stryker, no MSW** by default. Both are worth adding to a project that needs them, and

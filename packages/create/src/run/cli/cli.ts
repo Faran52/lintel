@@ -109,46 +109,22 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
 };
 
 /**
- * A recorded config, narrowed to the answers this version knows. Field by field rather than a spread, because the
- * whitelist is the point: `typescript: false` from an older config must not survive into a plan. The cost is that a new
- * answer has to be added here too, which `surfaces` was not, so a devtools-panel project replanned as a popup one.
+ * A recorded config is the answers to plan from, which is what `LintelConfig extends Answers` says, so there is no
+ * conversion step here at all.
+ *
+ * There was one, rebuilding `Answers` field by field, and it cost more than it bought: an answer it did not name was
+ * dropped in silence rather than refused, so `surfaces` shipped and a devtools-panel project replanned as a
+ * popup-and-background one. The whitelist was there to stop a `typescript: false` from an older config reaching a
+ * plan, and it is not what stops that: `parseLintelConfig` refuses a property it does not know, naming the field,
+ * before this is reached. Two lists of the same answers, one throwing and one dropping quietly, is a drift the quiet
+ * one always wins.
+ *
+ * `$schema` and `schemaVersion` come along, and describe the file rather than the project. Both are validated to a
+ * single permitted value, so the only place they can be seen again is `emitLintelConfig`, which writes those same two
+ * constants itself.
  */
 const answersIn = async (cwd: string): Promise<Answers> => {
-  const {
-    target,
-    browser,
-    hostedFramework,
-    surfaces,
-    testing,
-    packageManager,
-    libraries,
-    store,
-    typeSafety,
-    agents,
-    plugins,
-    resolveConditions,
-    aliases,
-    browsers,
-    ignores,
-  } = await readLintelConfig(cwd);
-
-  return {
-    target,
-    browser,
-    ...(hostedFramework === undefined ? {} : { hostedFramework }),
-    ...(surfaces === undefined ? {} : { surfaces }),
-    testing,
-    packageManager,
-    libraries,
-    store,
-    typeSafety,
-    agents,
-    plugins,
-    ...(resolveConditions === undefined ? {} : { resolveConditions }),
-    ...(aliases === undefined ? {} : { aliases }),
-    ...(browsers === undefined ? {} : { browsers }),
-    ...(ignores === undefined ? {} : { ignores }),
-  };
+  return await readLintelConfig(cwd);
 };
 
 /**
