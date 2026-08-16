@@ -227,11 +227,31 @@ const parseHookOutput = (text: string): HookOutput => {
   return JSON.parse(text) as HookOutput;
 };
 
-const runHook = (name: typeof HOOK_SCRIPTS[number], input: object | string): string => {
+/**
+ * `projectDir` is the host's own answer for where the project root is, and it is dropped unless a case sets one: this
+ * suite runs under a harness that exports it, and inheriting it would point every hook at this workspace rather than
+ * at the fixture, which resolves because this workspace has a checker of its own.
+ */
+const runHook = (
+  name: typeof HOOK_SCRIPTS[number],
+  input: object | string,
+  projectDir?: string,
+): string => {
+  const env: typeof process.env = {
+    ...process.env,
+    CLAUDE_PLUGIN_ROOT: join(ASSETS_ROOT, 'linteljs-plugin'),
+  };
+
+  delete env['CLAUDE_PROJECT_DIR'];
+
+  if (projectDir !== undefined) {
+    env['CLAUDE_PROJECT_DIR'] = projectDir;
+  }
+
   const result = spawnSync('/bin/bash', [join(HOOK_ASSETS, name)], {
     input: typeof input === 'string' ? input : JSON.stringify(input),
     encoding: 'utf8',
-    env: { ...process.env, CLAUDE_PLUGIN_ROOT: join(ASSETS_ROOT, 'linteljs-plugin') },
+    env,
   });
 
   expect(result.error).toBeUndefined();
@@ -356,6 +376,46 @@ describe('portable hook assets', () => {
 
     expect(parseHookOutput(output)).toMatchObject({ decision: 'block' });
     expect(parseHookOutput(output).reason).toContain('bad cast');
+  });
+
+  /**
+   * The checker lives at the project root and the payload's `cwd` is wherever the agent is standing, which is not the
+   * same directory. Resolved from `cwd` alone, an agent working in `dist/` was told `Cannot find module` and had the
+   * edit blocked for it: node exits non-zero either way, so a missing checker read exactly like a banned pattern.
+   *
+   * Both hosts are covered because only one of them answers the question. Claude Code exports the root; Codex does
+   * not, and there the walk up from `cwd` is the only thing that finds it.
+   */
+  describe.each([
+    ['the host names the project root', true],
+    ['the host names nothing, so it is found by walking up', false],
+  ])('an agent working from a subdirectory, when %s', (_case, hosted) => {
+    it('checks the file against the root checker rather than blocking on a missing one', () => {
+      mkdirSync(join(cwd, 'dist'));
+
+      const output = runHook('banned-pattern-guard.sh', {
+        cwd: join(cwd, 'dist'),
+        hook_event_name: 'PostToolUse',
+        tool_name: 'Write',
+        tool_input: { file_path: '../src/app.ts' },
+      }, hosted ? cwd : undefined);
+
+      expect(parseHookOutput(output).reason).toContain('bad cast');
+      expect(parseHookOutput(output).reason).not.toContain('Cannot find module');
+      expect(checkedPaths()).toEqual([join(cwd, 'src/app.ts')]);
+    });
+  });
+
+  // A project with no checker has no floor to enforce, which is not the same as a violation to report.
+  it('stays silent when no checker exists above the file at all', () => {
+    rmSync(join(cwd, 'scripts/checkBannedPatterns.ts'));
+
+    expect(runHook('banned-pattern-guard.sh', {
+      cwd,
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Write',
+      tool_input: { file_path: 'src/app.ts' },
+    })).toBe('');
   });
 
   it('checks a direct tool response path relative to the payload cwd', () => {

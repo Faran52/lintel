@@ -2,10 +2,36 @@
 
 payload=$(cat)
 
+# The checker sits at the project root, and the payload's `cwd` is wherever the agent is standing: an agent working in
+# a subdirectory resolved it to a path that does not exist, and node exiting non-zero for a missing file reads exactly
+# like a banned pattern, so the edit was blocked with `Cannot find module` as the reason. Searched upwards instead,
+# from the root the host names where there is one, since Claude Code exports it and Codex does not.
+checker_above() {
+  dir=$1
+
+  while [ -n "$dir" ]; do
+    if [ -f "$dir/scripts/checkBannedPatterns.ts" ]; then
+      printf '%s' "$dir/scripts/checkBannedPatterns.ts"
+      return 0
+    fi
+
+    parent=$(dirname "$dir")
+    [ "$parent" = "$dir" ] && return 1
+    dir=$parent
+  done
+
+  return 1
+}
+
 while IFS= read -r -d '' cwd && IFS= read -r -d '' file; do
   [ -f "$file" ] || continue
 
-  hits=$(node "$cwd/scripts/checkBannedPatterns.ts" "$file" 2>&1)
+  # No checker anywhere above the file is a project with no floor to enforce, which is not a violation to report.
+  checker=$(checker_above "${CLAUDE_PROJECT_DIR:-$cwd}") \
+    || checker=$(checker_above "$cwd") \
+    || continue
+
+  hits=$(node "$checker" "$file" 2>&1)
   status=$?
 
   if [ "$status" -ne 0 ]; then
