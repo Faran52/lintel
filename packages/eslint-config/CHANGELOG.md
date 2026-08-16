@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.6
+
+No change to the layers. The three versions move together, so this carries the write-time guard fix in
+`@linteljs/create`.
+
 ## 1.4.5
 
 No change to the layers. The three versions move together, so this carries the merged type floor and the

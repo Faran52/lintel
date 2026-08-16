@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.4.6
+
+### Fixed
+
+- **The write-time guard finds the checker from any directory.** `banned-pattern-guard.sh` resolved
+  `scripts/checkBannedPatterns.ts` against the payload's `cwd`, which is wherever the agent is standing
+  rather than the project root. An agent working in a subdirectory got a path that does not exist, and
+  since node exits non-zero for a missing file exactly as it does for a violation, the hook reported
+  `decision: block` with `Cannot find module` as the reason: every edit refused, for nothing the code
+  did. Found in a reference project by an agent working from `dist/`.
+
+  It searches upward now, from the root the host names where there is one, because Claude Code exports
+  `CLAUDE_PROJECT_DIR` and Codex does not, so neither half alone covers both. Both are held by tests.
+  A project with no checker anywhere above the file is silent rather than blocking, which is the other
+  half of the same confusion: nothing to enforce is not a violation to report.
+
+  This workspace's own copy of the hook already anchored on the project root, and the copy it ships did
+  not. The two are separate implementations that drifted, which is why the gate here never saw it.
+
 ## 1.4.5
 
 ### Changed
