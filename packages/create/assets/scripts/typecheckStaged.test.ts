@@ -50,6 +50,18 @@ afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
 });
 
+/**
+ * Colour is decoration, and asserting through it makes a test read the terminal it happens to run in: `tsc` pretty
+ * prints `error TS2322` with escapes between the two words, so a run under a coloured terminal failed where CI passed.
+ */
+const ESCAPE = String.fromCharCode(27);
+
+const plain = (text: string): string => {
+  return text.split(`${ESCAPE}[`).map((part, index) => {
+    return index === 0 ? part : part.replace(/^[0-9;]*m/u, '');
+  }).join('');
+};
+
 const run = (staged: string[]): { status: number | null; output: string } => {
   const result = spawnSync(execPath, [CHECKER, ...staged], {
     encoding: 'utf8',
@@ -57,7 +69,7 @@ const run = (staged: string[]): { status: number | null; output: string } => {
     env: { ...process.env, TYPECHECK_COMMAND: `${TSC} --noEmit -p tsconfig.json` },
   });
 
-  return { status: result.status, output: `${result.stdout}${result.stderr}` };
+  return { status: result.status, output: plain(`${result.stdout}${result.stderr}`) };
 };
 
 describe('a type-clean staged file', () => {
